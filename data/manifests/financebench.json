@@ -1,0 +1,34 @@
+{
+  "excluded_count": 0,
+  "exclusion_reasons": {},
+  "file_checksums": {
+    "source": "sha256:7a1c81789e0fd2f1c37057a7ec0097756d726b05e7228e68e57db8e18c54fd0b",
+    "splits": "sha256:149c514cf88b3bde3c725f5a8d5f6ee7b7f6e58949f826c1e405917a286b1f96"
+  },
+  "license": "CC-BY-NC-4.0",
+  "name": "financebench",
+  "parse_failures": [],
+  "prepared_at": "2026-08-15T08:13:49.641917+00:00",
+  "source_url": "https://huggingface.co/datasets/PatronusAI/financebench",
+  "split_counts": {
+    "dev": 45,
+    "test": 67,
+    "validation": 38
+  },
+  "split_group_by": "company",
+  "split_group_counts": {
+    "dev": 10,
+    "test": 12,
+    "validation": 10
+  },
+  "split_seed": 20260815,
+  "total_parsed": 150,
+  "total_valid": 150,
+  "transformations": [
+    "downloaded financebench_merged.jsonl",
+    "loaded financebench from financebench_merged.jsonl",
+    "validated against declared requirements",
+    "generated grouped splits (group_by=company, seed=20260815)"
+  ],
+  "version": "hf-open-source-150"
+}
