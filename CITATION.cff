@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+title: >-
+  EvidenceRoute: Statistical Evaluation and Contextual-Bandit Routing for
+  Reliable Enterprise Question Answering
+message: >-
+  If you use this software or its results, please cite it using the metadata
+  from this file.
+type: software
+authors:
+  - given-names: Carlos Esteban
+    family-names: De La Cruz Ribadeneira
+    affiliation: Independent research
+repository-code: "https://github.com/tabers77/evidence-route"
+abstract: >-
+  EvidenceRoute investigates whether a learned decision policy can determine
+  when an enterprise question should use lexical retrieval, dense retrieval,
+  hybrid retrieval, reranking, an agentic workflow, or abstention — improving
+  answer reliability while controlling monetary cost and latency. Candidate
+  workflows are executed under a full-information protocol, scored across
+  correctness, evidence support, retrieval quality, hallucination risk,
+  calibration, cost and latency, and compared using contextual-bandit routing
+  and offline policy evaluation with paired uncertainty intervals.
+keywords:
+  - information retrieval
+  - contextual bandits
+  - offline policy evaluation
+  - retrieval-augmented generation
+  - LLM evaluation
+  - reliable AI
+license: MIT
+version: 0.1.0
+references:
+  - type: software
+    title: "Evallab (agent-eval): framework-agnostic LLM/agent evaluator"
+    notes: >-
+      Evaluation and reward layer consumed by EvidenceRoute as a dependency.
+    authors:
+      - given-names: Carlos Esteban
+        family-names: De La Cruz Ribadeneira

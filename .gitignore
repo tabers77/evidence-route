@@ -1,0 +1,143 @@
+# ---------------------------------------------------------------------------
+# Secrets and local environment
+# ---------------------------------------------------------------------------
+# Never commit real credentials. Only .env.example (placeholders) is tracked.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+.azure/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ---------------------------------------------------------------------------
+# Virtual environments
+# ---------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------------------------------------------------------------------------
+# Testing / linting / typing caches
+# ---------------------------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# ---------------------------------------------------------------------------
+# Notebooks
+# ---------------------------------------------------------------------------
+.ipynb_checkpoints/
+notebooks/**/*.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Datasets and derived artifacts
+# ---------------------------------------------------------------------------
+# Source documents are downloaded, never redistributed from this repo.
+# Manifests, checksums and split definitions ARE tracked (see data/README.md).
+data/raw/
+data/interim/
+data/processed/
+data/cache/
+data/**/*.pdf
+data/**/*.zip
+data/**/*.tar.gz
+!data/manifests/
+!data/manifests/**
+!data/splits/
+!data/splits/**
+
+# Retrieval indexes are rebuildable from data + configs.
+indexes/
+*.faiss
+*.index
+*.bin
+
+# ---------------------------------------------------------------------------
+# Experiment outputs
+# ---------------------------------------------------------------------------
+# Raw runs are large and reproducible; summaries are curated and tracked.
+experiments/runs/*
+!experiments/runs/.gitkeep
+!experiments/runs/README.md
+
+# Response cache for cost control (see spec section 26).
+.cache/
+llm_cache/
+
+# ---------------------------------------------------------------------------
+# Generated reports
+# ---------------------------------------------------------------------------
+# Committed report *sources* stay; generated HTML/figure output does not.
+reports/generated/
+reports/**/*.html
+!reports/**/*.template.html
+
+# ---------------------------------------------------------------------------
+# Personal working files
+# ---------------------------------------------------------------------------
+# Author's scratch notes. Not project documentation — that lives in docs/.
+TODO.md
+
+# ---------------------------------------------------------------------------
+# Claude Code local state
+# ---------------------------------------------------------------------------
+# Per-developer tooling state and machine-local permissions. If shared project
+# settings are added later, track .claude/settings.json explicitly.
+.claude/
+.claudeignore
+
+# ---------------------------------------------------------------------------
+# Tooling / editors / OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# MLflow / experiment tracking (local backend only)
+# ---------------------------------------------------------------------------
+mlruns/
+mlartifacts/
