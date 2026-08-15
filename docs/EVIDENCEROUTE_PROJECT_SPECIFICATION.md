@@ -66,7 +66,7 @@ pytest -m "not llm and not slow" # 89 tests, offline, no API key required
 Every other subpackage under `src/evidence_route/` is 📋 — the directory and its
 design constraints exist, the logic does not. No stub returns fake data.
 
-### Roadmap progress
+### Roadmap progress status
 
 | Week | Deliverable | Status |
 | --- | --- | --- |
