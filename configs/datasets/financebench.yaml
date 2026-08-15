@@ -9,13 +9,19 @@
 # training observations. Routing features are fitted on FiQA instead.
 
 name: financebench
-version: "public-sample-v1"
-source_url: https://github.com/patronus-ai/financebench
+version: "hf-open-source-150"
+# NOTE: the GitHub repository named in the specification
+# (https://github.com/patronus-ai/financebench) now returns 404. The dataset is
+# distributed on HuggingFace instead — verified 2026-08-15: public, not gated,
+# 150 OPEN_SOURCE records, 32 companies, 84 documents.
+source_url: https://huggingface.co/datasets/PatronusAI/financebench
+source_file: financebench_merged.jsonl
 license: CC-BY-NC-4.0
 license_notes: >-
-  Non-commercial. Source PDFs are downloaded at prepare time and never
-  redistributed from this repository. Only manifests, checksums and split
-  definitions are version-controlled.
+  Non-commercial. The HuggingFace distribution contains question metadata only —
+  no PDFs. Source filings must be fetched from the per-question `doc_link` URLs
+  and are never redistributed from this repository. Only manifests, checksums
+  and split definitions are version-controlled.
 
 download:
   # Populated by `evidence-route data prepare`, which records the retrieval

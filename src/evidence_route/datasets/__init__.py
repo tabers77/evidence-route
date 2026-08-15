@@ -34,6 +34,13 @@ from evidence_route.datasets.base import (
     load_dataset_config,
     to_question_record,
 )
+from evidence_route.datasets.download import (
+    DATASET_SOURCES,
+    DatasetSource,
+    DownloadResult,
+    download_file,
+    ensure_dataset,
+)
 from evidence_route.datasets.financebench import load_financebench
 from evidence_route.datasets.manifest import DatasetManifest, build_manifest
 from evidence_route.datasets.prepare import PrepareResult, prepare_dataset
@@ -51,9 +58,14 @@ from evidence_route.datasets.validation import (
 )
 
 __all__ = [
+    "DATASET_SOURCES",
     "DatasetConfig",
     "DatasetManifest",
+    "DatasetSource",
+    "DownloadResult",
     "PrepareResult",
+    "download_file",
+    "ensure_dataset",
     "RawQuestion",
     "SplitAssignment",
     "ValidationIssue",

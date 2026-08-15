@@ -174,18 +174,35 @@ def data_prepare(
         "--force-resplit",
         help="Regenerate frozen splits. Invalidates every result citing the old split.",
     ),
+    download: bool = typer.Option(
+        True,
+        "--download/--no-download",
+        help="Fetch the dataset if it is missing locally.",
+    ),
+    force_download: bool = typer.Option(
+        False, "--force-download", help="Re-fetch even if the file is already present."
+    ),
 ) -> None:
-    """Load, validate, split and freeze a benchmark dataset."""
+    """Download, validate, split and freeze a benchmark dataset."""
     from evidence_route.datasets import prepare_dataset
 
     try:
-        result = prepare_dataset(config, source_path=source, force_resplit=force_resplit)
+        result = prepare_dataset(
+            config,
+            source_path=source,
+            force_resplit=force_resplit,
+            download=download,
+            force_download=force_download,
+        )
     except FileNotFoundError as exc:
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
-    except (NotImplementedError, ValueError) as exc:
+    except (NotImplementedError, ValueError, OSError, RuntimeError) as exc:
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
+
+    if result.downloaded:
+        typer.secho("Downloaded source data.", fg=typer.colors.GREEN)
 
     typer.secho(result.report.summary(), bold=True)
 

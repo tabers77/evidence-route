@@ -56,24 +56,45 @@ class PrepareResult:
     manifest_path: Path
     parse_failures: list[str]
     reused_frozen_splits: bool
+    #: Set when this run fetched the source file rather than finding it present.
+    downloaded: bool = False
 
 
 def _absolute(path: Path) -> Path:
     return path if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
+#: Accepted source filenames per dataset, in preference order.
+#:
+#: FinanceBench has been distributed under more than one name: the original
+#: GitHub repository (now removed) shipped ``financebench_open_source.jsonl``,
+#: while the HuggingFace dataset that replaced it ships
+#: ``financebench_merged.jsonl``. Both are accepted so a checkout obtained from
+#: either source works without editing config.
+_SOURCE_FILENAMES: dict[str, tuple[str, ...]] = {
+    "financebench": (
+        "financebench_merged.jsonl",
+        "financebench_open_source.jsonl",
+    ),
+    "fiqa": ("fiqa.jsonl",),
+    "ragtruth": ("ragtruth.jsonl",),
+}
+
+
 def resolve_source_path(config: DatasetConfig) -> Path:
     """Locate the raw source file for a dataset.
 
+    Returns the first accepted filename that exists; if none do, returns the
+    preferred one so the resulting error names the file the user should fetch.
     Kept separate so tests can point at a fixture without inventing a config.
     """
     raw_dir = _absolute(config.download.raw_dir)
-    candidates = {
-        "financebench": "financebench_open_source.jsonl",
-        "fiqa": "fiqa.jsonl",
-        "ragtruth": "ragtruth.jsonl",
-    }
-    return raw_dir / candidates.get(config.name, f"{config.name}.jsonl")
+    candidates = _SOURCE_FILENAMES.get(config.name, (f"{config.name}.jsonl",))
+    for filename in candidates:
+        path = raw_dir / filename
+        if path.exists():
+            return path
+    return raw_dir / candidates[0]
 
 
 def prepare_dataset(
@@ -81,8 +102,15 @@ def prepare_dataset(
     *,
     source_path: Path | None = None,
     force_resplit: bool = False,
+    download: bool = True,
+    force_download: bool = False,
 ) -> PrepareResult:
-    """Load, validate, split and freeze a dataset from its config."""
+    """Download, load, validate, split and freeze a dataset from its config.
+
+    Downloading is on by default so that preparation is genuinely one command
+    (spec section 19). It is skipped when ``source_path`` is given explicitly,
+    since the caller has then already said where the data is.
+    """
     config = load_dataset_config(config_path)
 
     loader = _LOADERS.get(config.name)
@@ -92,7 +120,24 @@ def prepare_dataset(
             f"Available: {', '.join(sorted(_LOADERS))}."
         )
 
-    source = source_path or resolve_source_path(config)
+    downloaded = False
+    if source_path is not None:
+        source = source_path
+    else:
+        source = resolve_source_path(config)
+        if download and (force_download or not source.exists()):
+            from evidence_route.config import get_settings
+            from evidence_route.datasets.download import ensure_dataset
+
+            result = ensure_dataset(
+                config.name,
+                _absolute(config.download.raw_dir),
+                force=force_download,
+                offline=get_settings().offline,
+            )
+            source = result.path
+            downloaded = result.downloaded
+
     questions, parse_failures = loader(source)
 
     report = validate_questions(
@@ -142,6 +187,11 @@ def prepare_dataset(
         license_name=config.license,
         source_files={"source": source, "splits": splits_path},
         transformations=[
+            (
+                f"downloaded {source.name}"
+                if downloaded
+                else f"used existing {source.name}"
+            ),
             f"loaded {config.name} from {source.name}",
             "validated against declared requirements",
             (
@@ -173,6 +223,7 @@ def prepare_dataset(
         manifest_path=manifest_path,
         parse_failures=parse_failures,
         reused_frozen_splits=reused,
+        downloaded=downloaded,
     )
 
 
