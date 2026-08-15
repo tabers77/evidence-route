@@ -17,7 +17,7 @@ This document is both the specification and the single source of truth for what
 has actually been built. The backlog in section 31 carries per-item status; this
 section is the summary.
 
-**Last updated:** 2026-08-15 · **Current week:** 1 of 12 · **Version:** 0.1.0
+**Last updated:** 2026-08-15 · **Current week:** 2 of 12 · **Version:** 0.1.0
 
 ### Status legend
 
@@ -35,7 +35,7 @@ section is the summary.
 | --- | --- | --- |
 | A — Foundation | ✅ | Package, tooling, CI, container, Evallab dependency wired |
 | B — Research protocol | 🟡 | `protocol_v1.md` drafted; not yet frozen, decisions 2/3/6 open |
-| C — Data | 📋 | Configs and data card written; no loaders yet |
+| C — Data | 🟡 | FinanceBench loader, validation, grouped splits done; parsing/chunking and FiQA/RAGTruth pending |
 | D — Workflows | 📋 | Action space + outcome schema done; no workflow executes yet |
 | E — Evallab integration | 📋 | Boundary verified by tests; adapters not written |
 | F — Routing | 📋 | Configs written; no feature extractor or policy yet |
@@ -49,7 +49,8 @@ section is the summary.
 evidence-route env check         # environment, credentials, Evallab availability
 evidence-route actions list      # the routing action space
 evidence-route profiles          # declared reward profiles and weights
-pytest -m "not llm and not slow" # 89 tests, offline, no API key required
+evidence-route data prepare      # load, validate, split and freeze a dataset
+pytest -m "not llm and not slow" # 133 tests, offline, no API key required
 ```
 
 ### Implemented modules
@@ -61,7 +62,12 @@ pytest -m "not llm and not slow" # 89 tests, offline, no API key required
 | `evaluation/rewards.py` | ✅ | Four reward profiles, quality composition, reward breakdown |
 | `evaluation/reproducibility.py` | ✅ | Run manifests: git state, checksums, environment, publishability |
 | `config.py` | ✅ | Environment settings; Azure credentials via `SecretStr`, never in repo |
-| `cli.py` | 🟡 | Full command surface; three commands live, the rest report their week |
+| `datasets/splits.py` | ✅ | Deterministic company-grouped splitting, leakage assertion, freeze/reload |
+| `datasets/financebench.py` | ✅ | FinanceBench JSONL loader; parse failures returned, not swallowed |
+| `datasets/validation.py` | ✅ | Declared-requirement checks; exclusions counted per reason |
+| `datasets/manifest.py` | ✅ | Dataset provenance: source, license, checksums, split seed and counts |
+| `datasets/prepare.py` | ✅ | `data prepare` pipeline with the frozen-split guard |
+| `cli.py` | 🟡 | Full command surface; four commands live, the rest report their week |
 
 Every other subpackage under `src/evidence_route/` is 📋 — the directory and its
 design constraints exist, the logic does not. No stub returns fake data.
@@ -70,8 +76,8 @@ design constraints exist, the logic does not. No stub returns fake data.
 
 | Week | Deliverable | Status |
 | --- | --- | --- |
-| 1 | Research protocol and repository foundation | 🟡 in progress |
-| 2 | Dataset and document pipeline | ⬜ |
+| 1 | Research protocol and repository foundation | 🟡 in progress — ADR outstanding |
+| 2 | Dataset and document pipeline | 🟡 in progress — dataset layer done, documents pending |
 | 3 | No-retrieval and BM25 baselines | ⬜ |
 | 4 | Dense and hybrid retrieval | ⬜ |
 | 5 | Reranking and agentic workflow | ⬜ |
@@ -1833,14 +1839,18 @@ documented package is 📋, not ✅.
 - [x] Define practical-significance thresholds. — ✅ `protocol_v1.md` §10
 - [ ] **Freeze the protocol.** — 🟡 blocked on open decisions 2, 3 and 6
 
-### Epic C — Data 📋
+### Epic C — Data 🟡
 
-- [ ] Implement FinanceBench loader. — 📋 config written, no loader
-- [ ] Implement data checks. — 📋 validation rules declared in config
-- [ ] Create grouped splits. — 📋 grouping strategy and seed declared
-- [ ] Add BEIR/FiQA supporting set. — 📋 `configs/datasets/fiqa.yaml`
-- [ ] Add RAGTruth scorer-validation subset. — 📋 `configs/datasets/ragtruth.yaml`
+- [x] Implement FinanceBench loader. — ✅ `datasets/financebench.py`; parse failures returned, not swallowed
+- [x] Implement data checks. — ✅ `datasets/validation.py`; exclusions counted per reason, never silently dropped
+- [x] Create grouped splits. — ✅ `datasets/splits.py`; deterministic, company-grouped, leakage asserted, frozen to `splits.json`
+- [x] *(added)* Dataset manifest. — ✅ source, license, checksums, split seed and counts
+- [x] *(added)* `data prepare` pipeline. — ✅ `datasets/prepare.py`, wired to the CLI, with a frozen-split guard
+- [ ] Document parsing and chunking. — 📋 next; blocks all retrieval actions
+- [ ] Add BEIR/FiQA supporting set. — 📋 `configs/datasets/fiqa.yaml`, loader not written
+- [ ] Add RAGTruth scorer-validation subset. — 📋 `configs/datasets/ragtruth.yaml`, loader not written
 - [x] Write data card. — ✅ `data/README.md`
+- [ ] Freeze the real FinanceBench splits. — ⬜ requires the corpus download; only fixture splits exist so far
 
 ### Epic D — Workflows 📋
 

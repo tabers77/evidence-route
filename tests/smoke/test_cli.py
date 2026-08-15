@@ -56,10 +56,32 @@ def test_profiles_lists_every_reward_profile():
         assert name in result.stdout
 
 
+def test_data_prepare_is_implemented_and_fails_cleanly_without_data(tmp_path):
+    """`data prepare` runs for real now.
+
+    Without a downloaded corpus it must still exit cleanly with an actionable
+    message rather than a traceback — that is the first thing anyone hits on a
+    fresh clone.
+    """
+    result = runner.invoke(
+        app,
+        [
+            "data",
+            "prepare",
+            "--config",
+            "configs/datasets/financebench.yaml",
+            "--source",
+            str(tmp_path / "absent.jsonl"),
+        ],
+    )
+    assert result.exit_code == 1
+    assert "not found" in result.stdout
+    assert "data prepare" in result.stdout
+
+
 @pytest.mark.parametrize(
     "command",
     [
-        ["data", "prepare", "--config", "configs/datasets/financebench.yaml"],
         ["index", "build", "--experiment", "configs/experiments/mvp.yaml"],
         ["outcomes", "run", "--experiment", "configs/experiments/mvp.yaml"],
         ["router", "train", "--config", "configs/routers/linucb.yaml"],

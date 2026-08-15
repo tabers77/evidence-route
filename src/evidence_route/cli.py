@@ -168,9 +168,59 @@ def data_prepare(
     config: Path = typer.Option(
         ..., "--config", help="Dataset config, e.g. configs/datasets/financebench.yaml"
     ),
+    source: Path | None = typer.Option(None, "--source", help="Override the source file location."),
+    force_resplit: bool = typer.Option(
+        False,
+        "--force-resplit",
+        help="Regenerate frozen splits. Invalidates every result citing the old split.",
+    ),
 ) -> None:
-    """Download, validate, checksum and split a benchmark dataset."""
-    _not_yet("data prepare", "week 2")
+    """Load, validate, split and freeze a benchmark dataset."""
+    from evidence_route.datasets import prepare_dataset
+
+    try:
+        result = prepare_dataset(config, source_path=source, force_resplit=force_resplit)
+    except FileNotFoundError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    except (NotImplementedError, ValueError) as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(result.report.summary(), bold=True)
+
+    if result.parse_failures:
+        typer.secho(
+            f"  {len(result.parse_failures)} row(s) failed to parse:",
+            fg=typer.colors.YELLOW,
+        )
+        for failure in result.parse_failures[:5]:
+            typer.echo(f"    {failure}")
+        if len(result.parse_failures) > 5:
+            typer.echo(f"    ... and {len(result.parse_failures) - 5} more")
+
+    origin = "reused frozen" if result.reused_frozen_splits else "generated"
+    typer.echo(
+        f"\nSplits ({origin}, group_by={result.assignment.group_by}, "
+        f"seed={result.assignment.seed}):"
+    )
+    group_counts = result.assignment.group_counts()
+    for split, count in sorted(result.assignment.counts().items()):
+        share = 100 * count / len(result.records) if result.records else 0
+        typer.echo(
+            f"  {split:<11} {count:>5} questions ({share:4.1f}%)  "
+            f"{group_counts.get(split, 0):>3} groups"
+        )
+
+    typer.echo(f"\n  splits   -> {result.splits_path}")
+    typer.echo(f"  manifest -> {result.manifest_path}")
+
+    if result.reused_frozen_splits:
+        typer.secho(
+            "\nExisting splits were reused. Pass --force-resplit to regenerate "
+            "(this invalidates results citing the old split).",
+            fg=typer.colors.YELLOW,
+        )
 
 
 @index_app.command("build")
