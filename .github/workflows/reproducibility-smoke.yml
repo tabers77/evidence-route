@@ -1,0 +1,94 @@
+name: reproducibility-smoke
+
+# The claim this workflow defends: a technically competent reviewer can
+# reproduce the small benchmark (spec section 32, definition of done).
+#
+# It runs the offline end-to-end smoke experiment from a clean checkout with no
+# API key, no downloaded corpus and no spend. If this breaks, the reproduction
+# path in the README is broken — regardless of whether the unit tests pass.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  schedule:
+    # Weekly. Catches reproduction rot from transitive dependency drift, which
+    # is invisible until someone tries to reproduce months later.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EVIDENCE_ROUTE_OFFLINE: "true"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, so the run manifest can resolve a real commit SHA and
+          # worktree state — the fields that decide whether a result is
+          # publishable.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install from a clean checkout
+        # Deliberately the documented one-command setup, not a bespoke CI
+        # incantation. If a reviewer's copy of this command fails, CI must fail
+        # too rather than papering over it.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Environment check
+        run: evidence-route env check
+
+      - name: Action space and reward profiles are intact
+        run: |
+          evidence-route actions list
+          evidence-route profiles
+
+      - name: Offline smoke experiment
+        run: pytest -m smoke -v
+
+      - name: Confirm no paid provider was reachable
+        # A smoke run that quietly reached a live endpoint would invalidate the
+        # "reproducible without paid API access" claim.
+        run: |
+          if [ -n "${AZURE_OPENAI_API_KEY:-}" ]; then
+            echo "::error::A provider credential is present in the smoke job."
+            exit 1
+          fi
+          echo "OK: no provider credential present; the smoke path is genuinely offline."
+
+  protocol-guard:
+    # The protocol must be frozen before the final test runs, and the frozen
+    # test identifiers must be committed. This guards the ordering that makes
+    # every reported confidence interval meaningful.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Protocol document exists
+        run: test -f experiments/protocols/protocol_v1.md
+
+      - name: Final-test config keeps the test split locked
+        # `unlock_test_split: true` committed to a branch means the frozen
+        # split is one accidental run away from being consumed.
+        run: |
+          if grep -qE '^\s*unlock_test_split:\s*true' configs/experiments/final_test.yaml; then
+            echo "::error::final_test.yaml has unlock_test_split: true committed."
+            echo "Unlock it locally for the single frozen run; do not commit the unlock."
+            exit 1
+          fi
+          echo "OK: test split is locked."

@@ -1,0 +1,105 @@
+name: tests
+
+# Deterministic, offline, free. Live-model tests are marked `llm` and excluded
+# here — they run only in the manually triggered live-model workflow, so a push
+# can never turn CI into a billable job (spec section 24).
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EVIDENCE_ROUTE_OFFLINE: "true"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10 is the local development interpreter; 3.12 catches deprecations
+        # early so the eventual move off 3.10 is not a cliff.
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out Evallab
+        # EvidenceRoute consumes Evallab as a dependency (spec section 2.3).
+        # `continue-on-error` because the schema, reward and reproducibility
+        # layers do not import it — those tests must still run if the sibling
+        # repository is private or unavailable to this workflow.
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: tabers77/evallab
+          path: .evallab
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install Evallab if available
+        run: |
+          if [ -f .evallab/pyproject.toml ]; then
+            pip install -e .evallab
+          else
+            echo "::notice::Evallab unavailable; Evallab-dependent tests will skip."
+          fi
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests scripts
+
+      - name: Check formatting
+        run: ruff format --check src tests scripts
+
+      - name: Type check
+        run: mypy
+        # Typing is advisory while the package is mostly interfaces; it becomes
+        # blocking once the workflow implementations land.
+        continue-on-error: true
+
+      - name: Test
+        run: pytest -m "not llm and not slow" --cov --cov-report=term-missing
+
+      - name: Verify no secrets are committed
+        # The repository must never contain a real credential. .env is
+        # gitignored; only .env.example, with placeholders, is tracked.
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "::error::.env is tracked in git. Credentials must never be committed."
+            exit 1
+          fi
+          echo "OK: .env is not tracked."
+
+  docker:
+    # Proves the reproduction artifact still builds and that its test suite
+    # passes inside the container, which is what a reviewer will actually run.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the slim image
+        run: docker build --target runtime -t evidence-route:ci .
+
+      - name: Run the test suite in the container
+        run: |
+          docker run --rm \
+            -e EVIDENCE_ROUTE_OFFLINE=true \
+            evidence-route:ci \
+            python -m pytest -m "not llm and not slow"

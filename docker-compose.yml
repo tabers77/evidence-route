@@ -1,0 +1,81 @@
+# EvidenceRoute container orchestration.
+#
+# The container is a reproduction artifact, not the development loop — see the
+# header of the Dockerfile. Everyday work happens in the local .venv.
+#
+#   docker compose build              # slim image: core + dev
+#   docker compose run --rm app       # run the default test suite
+#   docker compose run --rm app bash  # interactive shell
+#   docker compose run --rm full python -m pytest -m "not llm"
+#
+# Credentials are never baked into an image. They are read from the gitignored
+# .env at run time, and .env is absent from the build context (.dockerignore).
+
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    image: evidence-route:dev
+    working_dir: /workspace
+    volumes:
+      # Live source, so an edit on the host is visible in the container without
+      # a rebuild. The .git directory rides along, which is what lets a run
+      # manifest record the commit SHA and worktree cleanliness.
+      - .:/workspace
+      # The sibling Evallab checkout, installed editable by the entrypoint.
+      # Override the host path if it lives elsewhere:
+      #   EVALLAB_PATH=/some/other/evallab docker compose run --rm app
+      - ${EVALLAB_PATH:-../evallab}:/evallab
+      # Named volume for the virtualenv so the host .venv (built for Windows)
+      # never shadows the container's Linux one through the bind mount.
+      - venv:/opt/venv
+    env_file:
+      # Optional. Absent on a fresh clone, and the default offline mode means
+      # the test suite and smoke experiment still run without it.
+      - path: .env
+        required: false
+    environment:
+      # Explicit default. Reproducing the paid benchmark means overriding this
+      # deliberately, not forgetting to set it.
+      EVIDENCE_ROUTE_OFFLINE: "${EVIDENCE_ROUTE_OFFLINE:-true}"
+      PYTHONPATH: /workspace/src
+    # Keeps `docker compose run --rm app bash` usable interactively.
+    stdin_open: true
+    tty: true
+
+  # Full experiment environment. Several GB — build it only when reproducing the
+  # real outcome matrix rather than the offline smoke path.
+  #
+  # Spelled out rather than using `extends`, whose volume and build merge
+  # semantics are easy to get subtly wrong.
+  full:
+    build:
+      context: .
+      target: full
+    image: evidence-route:full
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - ${EVALLAB_PATH:-../evallab}:/evallab
+      - venv-full:/opt/venv
+      # Model weights persist across runs so torch and sentence-transformers
+      # are not re-downloaded every time.
+      - hf-cache:/workspace/.cache
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      EVIDENCE_ROUTE_OFFLINE: "${EVIDENCE_ROUTE_OFFLINE:-true}"
+      PYTHONPATH: /workspace/src
+    stdin_open: true
+    tty: true
+    # Building the outcome matrix is memory-hungry once faiss and a
+    # cross-encoder are both resident. Fail loudly on a limit rather than
+    # having the kernel kill a half-finished expensive run.
+    mem_limit: 8g
+
+volumes:
+  venv:
+  venv-full:
+  hf-cache:

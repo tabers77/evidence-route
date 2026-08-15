@@ -1,0 +1,35 @@
+.git/
+.github/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Secrets never enter the image.
+.env
+.env.*
+!.env.example
+
+# Large, rebuildable or downloaded artifacts.
+data/raw/
+data/interim/
+data/processed/
+data/cache/
+indexes/
+experiments/runs/
+reports/generated/
+.cache/
+llm_cache/
+mlruns/
+notebooks/
+
+.DS_Store
+Thumbs.db
