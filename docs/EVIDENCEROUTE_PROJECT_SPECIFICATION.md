@@ -50,7 +50,7 @@ evidence-route env check         # environment, credentials, Evallab availabilit
 evidence-route actions list      # the routing action space
 evidence-route profiles          # declared reward profiles and weights
 evidence-route data prepare      # load, validate, split and freeze a dataset
-pytest -m "not llm and not slow" # 133 tests, offline, no API key required
+pytest -m "not llm and not slow" # 187 tests, offline, no API key required
 ```
 
 ### Implemented modules
@@ -67,6 +67,10 @@ pytest -m "not llm and not slow" # 133 tests, offline, no API key required
 | `datasets/validation.py` | ✅ | Declared-requirement checks; exclusions counted per reason |
 | `datasets/manifest.py` | ✅ | Dataset provenance: source, license, checksums, split seed and counts |
 | `datasets/prepare.py` | ✅ | `data prepare` pipeline with the frozen-split guard |
+| `documents/chunking.py` | ✅ | Stable content-derived chunk ids, page provenance, table handling |
+| `documents/evidence.py` | ✅ | Page-level evidence references → chunks; recall@k and hit@k |
+| `documents/parsing.py` | ✅ | Text backend; pdfplumber behind the optional extra; parse validation |
+| `documents/models.py` | ✅ | ParsedDocument, ParsedPage, Table, Chunk |
 | `cli.py` | 🟡 | Full command surface; four commands live, the rest report their week |
 
 Every other subpackage under `src/evidence_route/` is 📋 — the directory and its
@@ -77,7 +81,7 @@ design constraints exist, the logic does not. No stub returns fake data.
 | Week | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Research protocol and repository foundation | 🟡 in progress — ADR outstanding |
-| 2 | Dataset and document pipeline | 🟡 in progress — dataset layer done, documents pending |
+| 2 | Dataset and document pipeline | 🟡 near complete — needs the real corpus downloaded and splits frozen |
 | 3 | No-retrieval and BM25 baselines | ⬜ |
 | 4 | Dense and hybrid retrieval | ⬜ |
 | 5 | Reranking and agentic workflow | ⬜ |
@@ -1846,7 +1850,9 @@ documented package is 📋, not ✅.
 - [x] Create grouped splits. — ✅ `datasets/splits.py`; deterministic, company-grouped, leakage asserted, frozen to `splits.json`
 - [x] *(added)* Dataset manifest. — ✅ source, license, checksums, split seed and counts
 - [x] *(added)* `data prepare` pipeline. — ✅ `datasets/prepare.py`, wired to the CLI, with a frozen-split guard
-- [ ] Document parsing and chunking. — 📋 next; blocks all retrieval actions
+- [x] Document parsing and chunking. — ✅ `documents/`; reproducible chunk ids, page provenance preserved, tables kept structured
+- [x] *(added)* Evidence → chunk resolution. — ✅ makes retrieval recall computable, separately from answer quality
+- [ ] PDF backend verified on real filings. — ⬜ code written behind the `documents` extra; untested against actual FinanceBench PDFs
 - [ ] Add BEIR/FiQA supporting set. — 📋 `configs/datasets/fiqa.yaml`, loader not written
 - [ ] Add RAGTruth scorer-validation subset. — 📋 `configs/datasets/ragtruth.yaml`, loader not written
 - [x] Write data card. — ✅ `data/README.md`
