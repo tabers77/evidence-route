@@ -137,9 +137,11 @@ def download_file(
     tmp_path = Path(tmp_name)
     written = 0
     try:
-        with open(tmp_fd, "wb") as out:
-            with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
-                shutil.copyfileobj(response, out)
+        with (
+            open(tmp_fd, "wb") as out,
+            urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response,
+        ):
+            shutil.copyfileobj(response, out)
         written = tmp_path.stat().st_size
         if written == 0:
             raise OSError(f"Downloaded zero bytes from {url}")

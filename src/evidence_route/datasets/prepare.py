@@ -187,11 +187,7 @@ def prepare_dataset(
         license_name=config.license,
         source_files={"source": source, "splits": splits_path},
         transformations=[
-            (
-                f"downloaded {source.name}"
-                if downloaded
-                else f"used existing {source.name}"
-            ),
+            (f"downloaded {source.name}" if downloaded else f"used existing {source.name}"),
             f"loaded {config.name} from {source.name}",
             "validated against declared requirements",
             (

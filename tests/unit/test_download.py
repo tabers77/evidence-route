@@ -28,7 +28,7 @@ def fake_urlopen(monkeypatch):
     """Patch urlopen, recording how many times it was called."""
     calls: list[str] = []
 
-    def _open(request, timeout=None):  # noqa: ARG001
+    def _open(request, timeout=None):
         calls.append(getattr(request, "full_url", str(request)))
         return io.BytesIO(PAYLOAD)
 
@@ -81,9 +81,7 @@ def test_existing_file_failing_its_checksum_is_replaced(tmp_path, fake_urlopen):
     """A stale or corrupt local copy must not be preserved."""
     dest = tmp_path / "data.jsonl"
     dest.write_bytes(b"corrupt")
-    result = download_file(
-        "https://example.invalid/d", dest, expected_sha256=PAYLOAD_SHA
-    )
+    result = download_file("https://example.invalid/d", dest, expected_sha256=PAYLOAD_SHA)
     assert result.downloaded
     assert dest.read_bytes() == PAYLOAD
 
@@ -93,9 +91,7 @@ def test_existing_file_failing_its_checksum_is_replaced(tmp_path, fake_urlopen):
 # ---------------------------------------------------------------------------
 def test_matching_checksum_is_accepted(tmp_path, fake_urlopen):
     dest = tmp_path / "data.jsonl"
-    assert download_file(
-        "https://example.invalid/d", dest, expected_sha256=PAYLOAD_SHA
-    ).downloaded
+    assert download_file("https://example.invalid/d", dest, expected_sha256=PAYLOAD_SHA).downloaded
 
 
 def test_checksum_mismatch_raises_and_leaves_nothing_behind(tmp_path, fake_urlopen):
@@ -119,7 +115,7 @@ def test_failed_download_leaves_no_partial_file(tmp_path, monkeypatch):
     """An interrupted download must not leave a truncated file at the
     destination — the next run would find it and prepare a partial dataset."""
 
-    def _boom(request, timeout=None):  # noqa: ARG001
+    def _boom(request, timeout=None):
         raise urllib.error.URLError("connection reset")
 
     monkeypatch.setattr("urllib.request.urlopen", _boom)
@@ -133,7 +129,7 @@ def test_failed_download_leaves_no_partial_file(tmp_path, monkeypatch):
 
 
 def test_existing_good_file_survives_a_failed_forced_refetch(tmp_path, monkeypatch):
-    def _boom(request, timeout=None):  # noqa: ARG001
+    def _boom(request, timeout=None):
         raise urllib.error.URLError("down")
 
     monkeypatch.setattr("urllib.request.urlopen", _boom)
@@ -147,9 +143,7 @@ def test_existing_good_file_survives_a_failed_forced_refetch(tmp_path, monkeypat
 
 
 def test_empty_response_is_rejected(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=None: io.BytesIO(b"")
-    )
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout=None: io.BytesIO(b""))
     dest = tmp_path / "data.jsonl"
     with pytest.raises(OSError, match="zero bytes"):
         download_file("https://example.invalid/d", dest)
@@ -157,10 +151,8 @@ def test_empty_response_is_rejected(tmp_path, monkeypatch):
 
 
 def test_http_error_is_reported_with_its_status(tmp_path, monkeypatch):
-    def _http_error(request, timeout=None):  # noqa: ARG001
-        raise urllib.error.HTTPError(
-            "https://example.invalid/d", 404, "Not Found", {}, None
-        )
+    def _http_error(request, timeout=None):
+        raise urllib.error.HTTPError("https://example.invalid/d", 404, "Not Found", {}, None)
 
     monkeypatch.setattr("urllib.request.urlopen", _http_error)
     with pytest.raises(OSError, match="HTTP 404"):
