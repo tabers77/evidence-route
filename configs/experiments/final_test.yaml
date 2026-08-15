@@ -1,0 +1,132 @@
+# The frozen final evaluation (spec section 21, week 11).
+#
+# THIS CONFIG TOUCHES THE TEST SPLIT. Running it is a one-way door: after it
+# executes, no further model, threshold or reward tuning may be driven by what
+# it shows. Tuning after seeing test results turns a held-out estimate into a
+# training estimate, and every confidence interval in the report becomes a
+# fiction.
+#
+# Preconditions, all of which must hold before this runs:
+#   - experiments/protocols/protocol_v1.md is frozen and committed
+#   - hypotheses were recorded before any test result was inspected
+#   - the primary comparison and its metric are declared
+#   - practical-significance thresholds are declared
+#   - every router and threshold is fitted on dev/validation only
+#   - the worktree is clean (a dirty run is not publishable)
+
+experiment_id: final-v1
+description: Frozen final evaluation on the held-out test split.
+
+# Guard against accidental execution. The runner refuses unless this is set
+# explicitly AND the environment's protect_test_split is deliberately overridden.
+unlock_test_split: false
+
+datasets:
+  - config: configs/datasets/financebench.yaml
+    splits: [test]
+
+actions:
+  config: configs/workflows/mvp_actions.yaml
+  enabled:
+    - A0_direct
+    - A1_bm25
+    - A2_dense
+    - A3_hybrid
+    - A4_hybrid_rerank
+    - A5_agentic
+    - A6_abstain
+
+policies:
+  # Every policy is loaded from its fitted artifact. Nothing is refitted here.
+  fixed: configs/routers/fixed.yaml
+  rule_based: configs/routers/rule_based.yaml
+  supervised: configs/routers/supervised.yaml
+  linucb: configs/routers/linucb.yaml
+  thompson: configs/routers/thompson.yaml
+  require_fitted_artifacts: true
+
+comparison:
+  # Declared before the test set is read (spec section 33, decision 11).
+  primary:
+    treatment: supervised_v1
+    comparator: strongest_validation
+    metric: policy_value
+    reward_profile: balanced_enterprise
+  secondary:
+    - { treatment: linucb_v1, comparator: strongest_validation, metric: policy_value }
+    - { treatment: thompson_v1, comparator: strongest_validation, metric: policy_value }
+    - { treatment: rule_based_v1, comparator: strongest_validation, metric: policy_value }
+  # Several pairwise tests are reported, so the secondary family is corrected.
+  # The primary comparison is not corrected — it was declared in advance.
+  multiple_comparison_correction: holm
+
+statistics:
+  # Paired: every workflow is evaluated on the same questions. Resampling is
+  # clustered at question level so replicates are not counted as extra data.
+  bootstrap:
+    method: paired
+    n_resamples: 10000
+    cluster_by: question_id
+    confidence_level: 0.95
+    seed: 20260815
+  tests:
+    - { name: paired_permutation, applies_to: continuous_differences }
+    - { name: mcnemar, applies_to: paired_binary_correctness }
+    - { name: bootstrap_policy_value, applies_to: policy_value_differences }
+  report_intervals_for:
+    - answer_correctness_difference
+    - evidence_support_difference
+    - cost_difference
+    - latency_difference
+    - policy_value_difference
+    - hallucination_rate_difference
+
+# Declared BEFORE the test, so "significant" and "worth it" stay separable
+# (spec section 14.7).
+practical_significance:
+  min_quality_improvement: 0.03      # below this, extra cost is not justified
+  max_acceptable_latency_ms: 15000
+  max_hallucination_rate: 0.05
+  min_answer_coverage: 0.80
+  meaningful_cost_saving_pct: 20
+
+reward_profiles:
+  - quality_first
+  - balanced_enterprise
+  - cost_sensitive
+  - regulated
+
+analysis:
+  risk_coverage: true
+  calibration: true
+  reward_sensitivity: true
+  failure_taxonomy: true
+  human_review_sample:
+    enabled: true
+    # Stratified so the sample is not dominated by easy, correctly scored cases
+    # (spec section 15.2).
+    size: 60
+    stratify_by:
+      - automated_score_correctness
+      - workflow_action
+      - judge_confidence
+      - is_abstention
+      - is_numerical
+      - scorer_disagreement
+
+outputs:
+  outcome_matrix: experiments/runs/${experiment_id}/outcomes.parquet
+  evaluations: experiments/runs/${experiment_id}/evaluations.parquet
+  traces_dir: experiments/runs/${experiment_id}/traces
+  manifest: experiments/runs/${experiment_id}/manifest.json
+
+budget:
+  max_cost_usd: 40.0
+  require_cost_estimate_first: true
+
+reproducibility:
+  random_seed: 20260815
+  capture_manifest: true
+  temperature: 0.0
+  # A result cited publicly must come from a committed, clean worktree.
+  require_clean_worktree: true

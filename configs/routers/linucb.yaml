@@ -1,0 +1,46 @@
+# LinUCB contextual bandit (spec section 9.4).
+#
+# Disjoint LinUCB: one linear model per action, with an upper-confidence bonus
+# driving exploration. The point is correct formulation and honest evaluation,
+# not implementing every known bandit algorithm.
+
+name: linucb_v1
+type: contextual_bandit
+algorithm: linucb
+
+hyperparameters:
+  # Exploration strength. Selected on validation — never tuned against the
+  # final test set (spec section 21, week 9 exit criteria).
+  alpha: [0.1, 0.5, 1.0, 2.0]
+  select_alpha_on: validation
+  # Ridge regularization on the per-arm design matrix. With a benchmark this
+  # small the prior does real work, so it is stated rather than left implicit.
+  lambda_ridge: 1.0
+
+context:
+  # Feature identity is part of the policy's identity: a policy trained on a
+  # different feature set is a different policy and gets a different name.
+  feature_set: routing_v1
+  standardize: true
+  # Standardization statistics are fitted on the training split only, then
+  # frozen. Fitting them across all splits would leak test-set information into
+  # the policy.
+  fit_scaler_on: dev
+
+reward:
+  profile: balanced_enterprise
+  version: v1
+
+simulation:
+  # Multiple seeds, because a single bandit run is a single sample path and its
+  # cumulative reward curve is not evidence on its own.
+  n_seeds: 20
+  n_rounds: 2000
+  # Questions are sampled with replacement to reach n_rounds on a small
+  # benchmark. This is a stated limitation, not a way to manufacture data.
+  sample_with_replacement: true
+  report:
+    - cumulative_reward
+    - regret_vs_oracle
+    - per_seed_variance
+    - action_distribution_over_time

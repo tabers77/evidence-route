@@ -1,0 +1,45 @@
+# Fixed-policy baselines (spec section 9.1).
+#
+# Every question gets the same action. These are not throwaway comparisons: the
+# central claim of the project is that a learned router beats the strongest of
+# them, so they must be run properly and reported honestly.
+
+routers:
+  - name: always_direct
+    type: fixed
+    action: A0_direct
+
+  - name: always_bm25
+    type: fixed
+    action: A1_bm25
+
+  - name: always_dense
+    type: fixed
+    action: A2_dense
+
+  - name: always_hybrid
+    type: fixed
+    action: A3_hybrid
+
+  - name: always_hybrid_rerank
+    type: fixed
+    action: A4_hybrid_rerank
+
+  - name: always_agentic
+    type: fixed
+    action: A5_agentic
+
+  - name: cheapest_answering
+    type: derived
+    rule: minimum_mean_cost_among_answering_actions
+    # Resolved on validation data, not on test.
+    fit_split: validation
+
+  - name: strongest_validation
+    type: derived
+    rule: maximum_mean_reward_on_validation
+    fit_split: validation
+    # This is the comparator for the primary comparison (spec section 33,
+    # decision 11). Selecting it on validation and then reporting it on test is
+    # the only honest way to name a "best fixed baseline".
+    is_primary_comparator: true

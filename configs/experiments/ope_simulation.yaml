@@ -1,0 +1,73 @@
+# Logged-feedback simulation (spec section 10).
+#
+# TERMINOLOGY, which must not drift in any write-up:
+#   This is a controlled logged-feedback simulation constructed from
+#   full-information benchmark outcomes.
+# It is NOT production user feedback and NOT a deployed online RL system.
+#
+# Behavior policies are replayed over the outcome matrix. Only the reward of the
+# action a policy actually selected is revealed, reproducing the partial
+# feedback of production — while the full matrix is retained so every estimate
+# can be checked against a value that is genuinely known.
+
+experiment_id: ope-sim-v1
+description: Replay behavior policies over the full-information outcome matrix.
+
+source_outcome_matrix: experiments/runs/mvp-v1/outcomes.parquet
+
+reward:
+  profiles:
+    - balanced_enterprise
+    - quality_first
+
+behavior_policies:
+  - name: uniform_random
+    type: uniform
+    # Best possible coverage: every action has propensity 1/|A|. The easy case
+    # for IPS, and the yardstick the harder policies are judged against.
+
+  - name: epsilon_greedy_bm25
+    type: epsilon_greedy
+    base_action: A1_bm25
+    epsilon: 0.2
+
+  - name: cost_biased
+    type: softmax_over_cost
+    temperature: 0.5
+    direction: prefer_cheap
+
+  - name: quality_biased
+    type: softmax_over_validation_reward
+    temperature: 0.5
+
+  - name: poor_coverage
+    type: epsilon_greedy
+    base_action: A1_bm25
+    epsilon: 0.02
+    # Deliberately bad. Expensive actions are logged so rarely that their
+    # propensities become tiny, IPS weights explode, and the estimator's
+    # variance blows up. Including this on purpose is the point: the failure
+    # mode is documented rather than avoided (spec section 21, week 10).
+
+logging:
+  n_rounds: 5000
+  sample_with_replacement: true
+  # Every log row records the exact probability of the selected action. Without
+  # it, IPS and doubly robust estimation are simply not computable.
+  record_propensity: true
+  # Propensity floor. A logged action with zero probability makes the estimator
+  # undefined, so it is rejected at write time.
+  min_propensity: 1.0e-6
+  seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+outputs:
+  logs: experiments/runs/${experiment_id}/bandit_logs.parquet
+  manifest: experiments/runs/${experiment_id}/manifest.json
+
+diagnostics:
+  # Reported before any estimate is trusted.
+  report:
+    - propensity_distribution_per_policy
+    - effective_sample_size
+    - action_coverage_per_policy
+    - min_observed_propensity

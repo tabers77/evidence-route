@@ -1,0 +1,62 @@
+# Offline end-to-end smoke experiment.
+#
+# The reproduction floor: this must run on a fresh clone, in CI, with no API
+# key, no downloaded corpus and no paid call (spec section 19, final paragraph).
+# It proves the pipeline is wired together — not that any result is good.
+#
+#   evidence-route outcomes run --experiment configs/experiments/smoke.yaml
+
+experiment_id: smoke-v1
+description: Fixture-backed end-to-end path with no network access.
+
+mode:
+  offline: true
+  # Every provider call is served from recorded fixtures. A cache miss is a
+  # hard failure: silently falling through to a live call would turn CI into a
+  # billable job.
+  provider: fixtures
+  fixtures_dir: tests/fixtures/recorded
+  fail_on_cache_miss: true
+
+dataset:
+  name: financebench_fixture
+  # A handful of questions checked into the repo, small enough to be free and
+  # fast, with reference answers and evidence.
+  path: tests/fixtures/questions/smoke_questions.jsonl
+  split: dev
+
+actions:
+  # Retrieval-only actions plus abstention. The agentic action is excluded:
+  # replaying a multi-step loop from fixtures is brittle and adds no signal to
+  # a wiring check.
+  enabled:
+    - A0_direct
+    - A1_bm25
+    - A3_hybrid
+    - A6_abstain
+  config: configs/workflows/mvp_actions.yaml
+
+retrieval:
+  # In-memory index over the fixture corpus, rebuilt each run.
+  index: in_memory
+  embedding: hashing_vectorizer   # deterministic, no model download
+
+evaluation:
+  # Deterministic scorers only — an LLM judge would need a live provider.
+  scorers:
+    - RetrievalRecallScorer
+    - NumericalAnswerScorer
+    - CostScorer
+    - LatencyScorer
+    - AbstentionScorer
+  reward_profiles:
+    - balanced_enterprise
+
+reproducibility:
+  random_seed: 20260815
+  capture_manifest: true
+
+budget:
+  max_cost_usd: 0.0     # any nonzero spend means something reached a live API
+
+expected_runtime_seconds: 30

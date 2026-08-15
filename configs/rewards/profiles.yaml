@@ -1,0 +1,98 @@
+# Declared reward profiles (spec section 12.3).
+#
+# These mirror `evidence_route.evaluation.rewards.REWARD_PROFILES`, which is the
+# executable source of truth; this file documents them and pins the
+# normalization scales that turn raw cost and latency into the [0, 1] inputs the
+# reward expects.
+#
+# Weights are versioned, never edited in place. Changing a weight changes every
+# reward downstream, so a changed weight gets a new version.
+#
+# Results are reported under EVERY profile. A conclusion that survives only one
+# weighting is a conclusion about the weighting.
+
+normalization:
+  # Reference scales. Raw measurements are divided by these and clipped to
+  # [0, 1] before entering the reward, so a change in provider pricing does not
+  # silently reweight the reward function.
+  version: v1
+  cost_reference_usd: 0.05        # per-question cost mapped to penalty 1.0
+  latency_reference_ms: 30000     # 30 s mapped to penalty 1.0
+  clip: true
+
+quality_weights:
+  version: v1
+  answer_correctness: 0.6
+  evidence_support: 0.4
+
+profiles:
+  quality_first:
+    version: v1
+    description: >-
+      Correctness and evidence support dominate. Represents a setting where a
+      wrong answer is far more expensive than a slow one.
+    lambda_cost: 0.05
+    lambda_latency: 0.05
+    lambda_hallucination: 0.60
+    lambda_violation: 1.00
+
+  balanced_enterprise:
+    version: v1
+    description: >-
+      Quality, cost and latency all matter materially. Default operating point
+      for enterprise decision support and the intended primary profile.
+    lambda_cost: 0.25
+    lambda_latency: 0.20
+    lambda_hallucination: 0.40
+    lambda_violation: 1.00
+
+  cost_sensitive:
+    version: v1
+    description: >-
+      Minimize spend while holding an acceptable quality floor. Expect this to
+      favour A1/A2 and to make the agentic action hard to justify.
+    lambda_cost: 0.60
+    lambda_latency: 0.35
+    lambda_hallucination: 0.30
+    lambda_violation: 1.00
+
+  regulated:
+    version: v1
+    description: >-
+      High-risk setting where abstention is preferred to an uncertain answer.
+      Heaviest hallucination and violation penalties in the suite.
+    lambda_cost: 0.10
+    lambda_latency: 0.10
+    lambda_hallucination: 1.00
+    lambda_violation: 2.00
+
+# Constrained formulations, reported alongside the weighted sums. Stakeholders
+# generally find these easier to interpret than an arbitrary weighting
+# (spec section 12.4).
+constraints:
+  - name: quality_under_budget
+    objective: maximize
+    metric: answer_correctness
+    subject_to: { metric: mean_cost_usd, operator: "<=", value: 0.02 }
+  - name: cost_above_quality_floor
+    objective: minimize
+    metric: mean_cost_usd
+    subject_to: { metric: supported_answer_accuracy, operator: ">=", value: 0.70 }
+  - name: coverage_under_hallucination_cap
+    objective: maximize
+    metric: answer_coverage
+    subject_to: { metric: hallucination_rate, operator: "<=", value: 0.05 }
+
+# Sensitivity analysis (spec section 12.5): each weight is swept over the range
+# below and the preferred policy is re-derived. If the winner changes inside
+# these ranges, the finding is reported as weight-dependent.
+sensitivity:
+  sweep:
+    lambda_cost: [0.05, 0.15, 0.25, 0.40, 0.60]
+    lambda_latency: [0.05, 0.20, 0.35]
+    lambda_hallucination: [0.30, 0.40, 0.60, 1.00]
+  report:
+    - preferred_policy_changes
+    - conclusion_stability
+    - dominant_action_per_profile
+    - suspected_metric_gaming

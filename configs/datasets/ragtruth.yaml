@@ -1,0 +1,37 @@
+# RAGTruth — scorer-validation corpus (spec section 7.3).
+#
+# Used for exactly one job: checking whether the hallucination and
+# evidence-support scorers actually detect externally annotated unsupported
+# spans. Without this, judge quality is only ever validated against
+# self-generated examples, which is circular.
+#
+# RAGTruth does NOT become a third application branch. No routing, no bandits,
+# no workflow execution — scorer validation only.
+
+name: ragtruth
+version: "v1"
+source_url: https://github.com/ParticleMedia/RAGTruth
+license: MIT
+
+download:
+  manifest_path: data/manifests/ragtruth.json
+  raw_dir: data/raw/ragtruth
+  verify_checksums: true
+
+subset:
+  # Stratified across hallucination types so the validation set is not dominated
+  # by whichever failure mode happens to be most common.
+  max_examples: 500
+  stratify_by: hallucination_type
+  seed: 20260815
+
+scorer_validation:
+  # Which EvidenceRoute scorers are validated against these annotations.
+  scorers:
+    - CitationSupportScorer
+    - HallucinationScorer
+  # Reported per scorer: accuracy/F1 against the span labels, plus a confusion
+  # matrix. A judge that agrees with the generator is a known failure mode
+  # (spec section 27), so false negatives are reported separately.
+  report_confusion_matrix: true
+  report_by_hallucination_type: true

@@ -1,0 +1,86 @@
+# MVP experiment: the full-information outcome matrix (spec sections 7, 22).
+#
+# Runs EVERY enabled action on EVERY question in the development and validation
+# splits. That matrix is what makes the oracle upper bound computable and what
+# gives the offline policy evaluation study a ground truth to check against.
+#
+# The test split is deliberately absent. It is executed once, under
+# configs/experiments/final_test.yaml, after the protocol is frozen.
+
+experiment_id: mvp-v1
+description: Full-information outcome matrix on dev + validation.
+
+datasets:
+  - config: configs/datasets/financebench.yaml
+    splits: [dev, validation]
+  - config: configs/datasets/fiqa.yaml
+    splits: [dev, validation]
+
+actions:
+  config: configs/workflows/mvp_actions.yaml
+  enabled:
+    - A0_direct
+    - A1_bm25
+    - A2_dense
+    - A3_hybrid
+    - A4_hybrid_rerank
+    - A5_agentic
+    - A6_abstain
+
+execution:
+  # One generation per question-action for the matrix itself. Replicates are
+  # added only for the stochastic-variance analysis, on a subset, because
+  # replicates multiply cost by the number of actions.
+  replicates: 1
+  # Retries are recorded as separate outcomes with their token cost attached,
+  # never silently absorbed (spec section 26, item 8).
+  max_retries: 2
+  record_retry_cost: true
+  # Unchanged actions are served from cache so a partial rerun does not re-bill
+  # work that already succeeded.
+  use_response_cache: true
+  parallelism: 4
+
+evaluation:
+  scorers:
+    - RetrievalRecallScorer
+    - CitationSupportScorer
+    - NumericalAnswerScorer
+    - AbstentionScorer
+    - CostScorer
+    - LatencyScorer
+    - WorkflowViolationScorer
+  llm_judge:
+    enabled: true
+    # A different model family from the generator where the Azure resource
+    # allows it — a judge that shares the generator's blind spots inflates
+    # scores (spec section 27).
+    deployment_ref: judge
+    prompt_version: judge_v1
+  reward_profiles:
+    - quality_first
+    - balanced_enterprise
+    - cost_sensitive
+    - regulated
+
+outputs:
+  outcome_matrix: experiments/runs/${experiment_id}/outcomes.parquet
+  evaluations: experiments/runs/${experiment_id}/evaluations.parquet
+  traces_dir: experiments/runs/${experiment_id}/traces
+  manifest: experiments/runs/${experiment_id}/manifest.json
+  oracle_labels: experiments/runs/${experiment_id}/oracle.parquet
+
+budget:
+  # Hard ceiling. The run aborts before crossing it rather than after.
+  max_cost_usd: 25.0
+  # A dry run on a small subset estimates total spend before the real run
+  # starts (spec section 26, items 1-3).
+  require_cost_estimate_first: true
+  estimate_subset_size: 20
+
+reproducibility:
+  random_seed: 20260815
+  capture_manifest: true
+  # Generation temperature is pinned across every action so differences are
+  # attributable to the workflow, not to sampling.
+  temperature: 0.0

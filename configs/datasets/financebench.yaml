@@ -1,0 +1,65 @@
+# FinanceBench — primary business-facing benchmark (spec section 7.1).
+#
+# Public financial documents with associated evidence, covering extraction,
+# numerical reasoning and evidence synthesis. Closer to enterprise decision
+# support than a general trivia dataset.
+#
+# LIMITATION, stated up front: the public sample is small. It is treated as a
+# high-quality held-out evaluation set, NOT as an unlimited source of bandit
+# training observations. Routing features are fitted on FiQA instead.
+
+name: financebench
+version: "public-sample-v1"
+source_url: https://github.com/patronus-ai/financebench
+license: CC-BY-NC-4.0
+license_notes: >-
+  Non-commercial. Source PDFs are downloaded at prepare time and never
+  redistributed from this repository. Only manifests, checksums and split
+  definitions are version-controlled.
+
+download:
+  # Populated by `evidence-route data prepare`, which records the retrieval
+  # timestamp and a checksum for every file it fetches.
+  manifest_path: data/manifests/financebench.json
+  raw_dir: data/raw/financebench
+  verify_checksums: true
+
+parsing:
+  # Financial PDFs put the answer to most numerical questions inside a table.
+  # A parser that flattens tables into prose destroys exactly what this
+  # benchmark tests, so table extraction is validated separately.
+  pdf_backend: pdfplumber
+  extract_tables: true
+  validate_tables: true
+
+chunking:
+  strategy: recursive
+  chunk_size_tokens: 512
+  chunk_overlap_tokens: 64
+  # Chunk ids are derived from content, so re-chunking with identical settings
+  # reproduces identical identifiers and previously stored evidence labels
+  # remain valid.
+  id_scheme: content_hash
+
+splits:
+  # Grouped, not random. Several questions often share a source document, so
+  # question-level random splitting would leak document-specific patterns from
+  # training into test (spec section 7.4).
+  strategy: grouped
+  group_by: company
+  seed: 20260815
+  fractions:
+    dev: 0.30
+    validation: 0.25
+    test: 0.45
+  # Frozen once generated. Regenerating with a different seed invalidates every
+  # result that cites the old split.
+  output_dir: data/splits/financebench
+  freeze_test_ids: true
+
+validation:
+  require_reference_answer: true
+  require_reference_evidence: true
+  # Questions whose evidence cannot be located in the parsed documents are
+  # excluded and counted, not silently dropped.
+  report_unmatched_evidence: true

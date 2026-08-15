@@ -1,0 +1,64 @@
+# Interpretable rule-based router (spec section 9.2).
+#
+# Deliberately simple, and a serious baseline. A learned router that cannot beat
+# a handful of thresholds has not earned its complexity — and if the rules win,
+# that is a publishable finding, not an embarrassment.
+#
+# Every threshold below is fitted on development/validation data. `fitted: false`
+# means the run is using placeholders, which the training step must replace
+# before any comparison is reported.
+
+name: rule_based_v1
+type: rule_based
+fit_split: [dev, validation]
+fitted: false
+
+# Features consumed. All are available BEFORE the answer is known — the
+# feature-availability rule (spec section 8) — and the cost of computing them is
+# charged to the router.
+features:
+  - bm25_top1_score
+  - bm25_top1_top2_margin
+  - dense_top1_similarity
+  - dense_top1_top2_margin
+  - lexical_dense_agreement
+  - predicted_question_type
+  - distinct_documents_in_top_k
+
+# Rules evaluate in order; the first match wins. The fall-through default is
+# stated explicitly so no question can end up unrouted.
+rules:
+  - name: abstain_on_weak_retrieval
+    when: "bm25_top1_score < ${thresholds.min_bm25_score} and dense_top1_similarity < ${thresholds.min_dense_similarity}"
+    action: A6_abstain
+    abstention_reason: insufficient_evidence
+
+  - name: abstain_on_conflicting_retrieval
+    when: "lexical_dense_agreement < ${thresholds.min_agreement} and bm25_top1_top2_margin < ${thresholds.min_margin}"
+    action: A6_abstain
+    abstention_reason: retrieval_disagreement
+
+  - name: bm25_for_high_lexical_overlap
+    when: "bm25_top1_top2_margin >= ${thresholds.strong_margin}"
+    action: A1_bm25
+
+  - name: hybrid_on_retriever_disagreement
+    when: "lexical_dense_agreement < ${thresholds.min_agreement}"
+    action: A3_hybrid
+
+  - name: agentic_for_multi_step_questions
+    when: "predicted_question_type in ['synthesis', 'comparison', 'arithmetic']"
+    action: A5_agentic
+
+  - name: default
+    when: always
+    action: A3_hybrid
+
+thresholds:
+  # Placeholders. Replaced by `evidence-route router train`, which writes the
+  # fitted values back and flips `fitted` to true.
+  min_bm25_score: null
+  min_dense_similarity: null
+  min_agreement: null
+  min_margin: null
+  strong_margin: null

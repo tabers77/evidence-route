@@ -1,0 +1,44 @@
+# BEIR / FiQA — supporting retrieval dataset (spec section 7.2).
+#
+# Purpose: compare retrieval approaches across enough queries to say something
+# statistically, and fit routing features WITHOUT consuming FinanceBench test
+# examples. Also supports the distribution-shift stretch goal (train routing on
+# FiQA, evaluate on FinanceBench).
+#
+# Scope discipline: one BEIR dataset in the MVP, not all of them.
+
+name: fiqa
+version: "beir-v1.0.0"
+source_url: https://github.com/beir-cellar/beir
+license: Apache-2.0
+
+download:
+  manifest_path: data/manifests/fiqa.json
+  raw_dir: data/raw/fiqa
+  verify_checksums: true
+
+subset:
+  # A manageable subset keeps index building and the outcome matrix affordable.
+  # The sample is seeded so the subset itself is reproducible.
+  max_queries: 1000
+  max_corpus_docs: 20000
+  seed: 20260815
+
+chunking:
+  strategy: recursive
+  chunk_size_tokens: 512
+  chunk_overlap_tokens: 64
+  id_scheme: content_hash
+
+splits:
+  strategy: grouped
+  group_by: document
+  seed: 20260815
+  fractions:
+    dev: 0.50
+    validation: 0.50
+  output_dir: data/splits/fiqa
+
+validation:
+  require_reference_answer: false   # FiQA supplies relevance labels, not answers
+  require_reference_evidence: true

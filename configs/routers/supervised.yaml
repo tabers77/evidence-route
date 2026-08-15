@@ -1,0 +1,61 @@
+# Supervised oracle-imitation router (spec section 9.3).
+#
+# Because the experimental phase runs every action on every development
+# question, the best action under a declared reward is known — full-information
+# labels for supervised classification.
+#
+# Simple models are treated as serious candidates, not placeholders. A neural
+# router is not assumed superior and is only justified if it wins on validation
+# with the uncertainty reported.
+
+name: supervised_v1
+type: supervised
+fit_split: dev
+select_on: validation
+
+# Labels come from the oracle best action under this profile. Changing the
+# profile changes the labels, so the router is trained (and named) per profile.
+label:
+  source: oracle_best_action
+  reward_profile: balanced_enterprise
+
+candidates:
+  - name: multinomial_logistic
+    estimator: sklearn.linear_model.LogisticRegression
+    params:
+      multi_class: multinomial
+      max_iter: 1000
+      C: [0.1, 1.0, 10.0]        # selected on validation
+      class_weight: balanced      # the action distribution is skewed
+
+  - name: decision_tree
+    estimator: sklearn.tree.DecisionTreeClassifier
+    params:
+      max_depth: [3, 5, 8]
+      min_samples_leaf: [5, 10, 20]
+
+  - name: gradient_boosting
+    estimator: sklearn.ensemble.HistGradientBoostingClassifier
+    params:
+      max_depth: [3, 5]
+      learning_rate: [0.05, 0.1]
+
+calibration:
+  # Router confidence feeds the abstention decision, so it must mean something.
+  # Fitted on validation; test data is used only for the final evaluation.
+  method: isotonic
+  fit_split: validation
+
+evaluation:
+  # Accuracy alone is the wrong headline: picking the second-best action on a
+  # question where the two are nearly tied costs almost nothing, while picking a
+  # cheap action for a hard question costs a lot. Report policy value.
+  report:
+    - policy_value_per_reward_profile
+    - accuracy_vs_oracle
+    - regret_vs_oracle
+    - mean_cost_usd
+    - mean_latency_ms
+    - hallucination_rate
+    - feature_importance
+    - confusion_matrix_by_question_type

@@ -1,0 +1,159 @@
+# The candidate action space for the MVP (spec section 6).
+#
+# All seven actions produce outcomes under a common schema so they remain
+# directly comparable on the same question. That comparability is what makes the
+# full-information outcome matrix — and therefore the OPE ground truth — possible.
+#
+# No deployment names, endpoints or keys appear here. Model identity is resolved
+# at runtime from the environment (see .env.example).
+
+A0_direct:
+  description: Answer from parametric memory, no retrieval.
+  enabled: true
+  generation:
+    deployment_ref: chat          # resolves to EVIDENCE_ROUTE_AZURE_OPENAI_CHAT_DEPLOYMENT
+    temperature: 0.0
+    max_output_tokens: 512
+    prompt_version: direct_v1
+  # This action exists partly to measure how often the model produces a correct
+  # answer with no acceptable evidence — a positive result here is a warning
+  # about pretraining contamination, not a success.
+
+A1_bm25:
+  description: BM25 lexical retrieval plus answer generation.
+  enabled: true
+  retrieval:
+    method: bm25
+    top_k: 10
+    k1: 1.2
+    b: 0.75
+  generation:
+    deployment_ref: chat
+    temperature: 0.0
+    max_output_tokens: 512
+    prompt_version: grounded_v1
+
+A2_dense:
+  description: Dense embedding retrieval plus answer generation.
+  enabled: true
+  retrieval:
+    method: dense
+    top_k: 10
+    # Azure embeddings are primary; the local sentence-transformers model is a
+    # documented fallback so the benchmark stays reproducible for someone
+    # without an Azure account.
+    #
+    # The two are NOT interchangeable mid-experiment: an index built with a
+    # different embedding model is a different index, and pooling results across
+    # them would silently confound the retrieval comparison. The embedding
+    # provider and model version are recorded in every run manifest.
+    embedding:
+      provider: azure           # azure | local
+      deployment_ref: embedding
+      fallback:
+        provider: local
+        model_ref: local_embedding   # requires the `local-models` extra (torch)
+    index: faiss_flat_ip
+    normalize_embeddings: true
+  generation:
+    deployment_ref: chat
+    temperature: 0.0
+    max_output_tokens: 512
+    prompt_version: grounded_v1
+
+A3_hybrid:
+  description: Reciprocal rank fusion of BM25 and dense retrieval.
+  enabled: true
+  retrieval:
+    method: hybrid
+    top_k: 10
+    # Fusion is stated explicitly. Calling a system "hybrid" without
+    # documenting how rankings combine is not a method (spec section 6, A3).
+    fusion: reciprocal_rank_fusion
+    rrf_k: 60
+    components:
+      - method: bm25
+        candidate_k: 50
+      - method: dense
+        candidate_k: 50
+  generation:
+    deployment_ref: chat
+    temperature: 0.0
+    max_output_tokens: 512
+    prompt_version: grounded_v1
+
+A4_hybrid_rerank:
+  description: Hybrid retrieval, cross-encoder reranking, then generation.
+  enabled: true
+  retrieval:
+    method: hybrid
+    top_k: 30                     # wider candidate set, narrowed by the reranker
+    fusion: reciprocal_rank_fusion
+    rrf_k: 60
+  reranking:
+    # OPEN PROTOCOL DECISION (protocol_v1.md, decision 6).
+    #
+    # The spec permits either a cross-encoder or an LLM reranker (section 6, A4).
+    # They differ in more than install size: a cross-encoder is free per query,
+    # deterministic and offline; an LLM reranker costs money and tokens per
+    # query but needs no local model. Since A4's whole purpose is measuring
+    # whether reranking earns its latency and cost, that comparison is affected
+    # by which one is used — so the choice is made on measured evidence in
+    # roadmap week 5, not on convenience now.
+    #
+    # `method: cross_encoder` requires the `local-models` extra (torch);
+    # `method: llm` uses the Azure chat deployment.
+    method: cross_encoder
+    model_ref: local_reranker
+    top_k: 10
+    decided: false
+  generation:
+    deployment_ref: chat
+    temperature: 0.0
+    max_output_tokens: 512
+    prompt_version: grounded_v1
+
+A5_agentic:
+  description: Bounded multi-step agentic retrieval.
+  enabled: true
+  agent:
+    # Limits are structural, not advisory. Exceeding one yields an explicit
+    # step_limit_exceeded outcome rather than a silent truncation — an
+    # unbounded agent can consume the entire experiment budget on one question.
+    max_steps: 8
+    max_tool_calls: 12
+    max_total_tokens: 20000
+    max_wall_clock_seconds: 120
+    # Small allowlist. More tools do not make a better experiment; they make
+    # the action harder to interpret.
+    tools:
+      - search_collection
+      - read_chunk
+      - read_neighbouring_chunks
+      - deterministic_arithmetic
+      - submit_answer
+    on_limit_exceeded: record_error   # never silently truncate
+  generation:
+    deployment_ref: chat
+    temperature: 0.0
+    max_output_tokens: 512
+    prompt_version: agentic_v1
+
+A6_abstain:
+  description: Decline to answer and route to human review.
+  enabled: true
+  # Thresholds are fitted on validation data, never on the final test set.
+  # Placeholder values are marked so an unfitted run is obvious rather than
+  # quietly using arbitrary numbers.
+  thresholds:
+    fitted: false
+    min_top_retrieval_score: null
+    min_retrieval_margin: null
+    min_router_confidence: null
+  reason_codes:
+    - insufficient_evidence
+    - retrieval_disagreement
+    - ambiguous_question
+    - conflicting_documents
+    - calculation_unverified
+    - policy_low_confidence

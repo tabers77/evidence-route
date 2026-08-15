@@ -1,0 +1,43 @@
+# Contextual Thompson sampling (spec section 9.4).
+#
+# Bayesian linear model per action; the arm is chosen by sampling from the
+# posterior. Compared against LinUCB and epsilon-greedy under identical seeds
+# and identical context features, so the comparison is about the algorithm
+# rather than about the setup.
+
+name: thompson_v1
+type: contextual_bandit
+algorithm: contextual_thompson
+
+hyperparameters:
+  # Posterior variance scaling. Larger means more exploration.
+  v: [0.1, 0.25, 0.5, 1.0]
+  select_v_on: validation
+  lambda_ridge: 1.0
+
+context:
+  feature_set: routing_v1
+  standardize: true
+  fit_scaler_on: dev
+
+reward:
+  profile: balanced_enterprise
+  version: v1
+
+simulation:
+  n_seeds: 20
+  n_rounds: 2000
+  sample_with_replacement: true
+  report:
+    - cumulative_reward
+    - regret_vs_oracle
+    - per_seed_variance
+    - action_distribution_over_time
+
+# Epsilon-greedy is the third MVP policy and the cheapest sanity check: if a
+# more sophisticated algorithm cannot beat it, that is worth knowing early.
+baseline_comparison:
+  - name: epsilon_greedy_v1
+    algorithm: epsilon_greedy
+    epsilon: [0.05, 0.1, 0.2]
+    select_epsilon_on: validation
