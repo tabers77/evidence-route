@@ -8,9 +8,23 @@ Provider credentials come exclusively from the environment through
 ``evidence_route.config.Settings``. No endpoint, deployment name or key appears
 in this package.
 
-Planned modules:
-    ``client``    Azure OpenAI client construction (API key or Entra ID)
-    ``schema``    the structured answer contract
+Modules:
+    ``schema``    the structured answer contract (implemented)
+    ``client``    Azure OpenAI client construction (planned)
     ``prompts``   versioned prompt templates; the version is recorded per run
     ``cache``     content-addressed response cache (spec section 26)
 """
+
+from evidence_route.generation.schema import (
+    AnswerCitation,
+    StructuredAnswer,
+    extract_json_object,
+    parse_structured_answer,
+)
+
+__all__ = [
+    "AnswerCitation",
+    "StructuredAnswer",
+    "extract_json_object",
+    "parse_structured_answer",
+]

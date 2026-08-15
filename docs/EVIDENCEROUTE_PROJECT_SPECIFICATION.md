@@ -50,7 +50,7 @@ evidence-route env check         # environment, credentials, Evallab availabilit
 evidence-route actions list      # the routing action space
 evidence-route profiles          # declared reward profiles and weights
 evidence-route data prepare      # load, validate, split and freeze a dataset
-pytest -m "not llm and not slow" # 187 tests, offline, no API key required
+pytest -m "not llm and not slow" # 253 tests, offline, no API key required
 ```
 
 ### Implemented modules
@@ -71,6 +71,9 @@ pytest -m "not llm and not slow" # 187 tests, offline, no API key required
 | `documents/evidence.py` | ✅ | Page-level evidence references → chunks; recall@k and hit@k |
 | `documents/parsing.py` | ✅ | Text backend; pdfplumber behind the optional extra; parse validation |
 | `documents/models.py` | ✅ | ParsedDocument, ParsedPage, Table, Chunk |
+| `retrieval/tokenization.py` | ✅ | Number-aware tokenizer; keeps `66,608` whole and matches `66608` |
+| `retrieval/bm25.py` | ✅ | Okapi BM25, non-negative IDF, deterministic tie-breaking |
+| `generation/schema.py` | ✅ | Structured answer contract; citations, confidence, abstention |
 | `cli.py` | 🟡 | Full command surface; four commands live, the rest report their week |
 
 Every other subpackage under `src/evidence_route/` is 📋 — the directory and its
@@ -82,7 +85,7 @@ design constraints exist, the logic does not. No stub returns fake data.
 | --- | --- | --- |
 | 1 | Research protocol and repository foundation | 🟡 in progress — ADR outstanding |
 | 2 | Dataset and document pipeline | 🟡 near complete — needs the real corpus downloaded and splits frozen |
-| 3 | No-retrieval and BM25 baselines | ⬜ |
+| 3 | No-retrieval and BM25 baselines | 🟡 in progress — retrieval + answer schema done; generation client, workflows, Evallab adapter and scorers pending |
 | 4 | Dense and hybrid retrieval | ⬜ |
 | 5 | Reranking and agentic workflow | ⬜ |
 | 6 | Reliability, calibration and abstention | ⬜ |
@@ -1858,11 +1861,13 @@ documented package is 📋, not ✅.
 - [x] Write data card. — ✅ `data/README.md`
 - [ ] Freeze the real FinanceBench splits. — ⬜ requires the corpus download; only fixture splits exist so far
 
-### Epic D — Workflows 📋
+### Epic D — Workflows 🟡
 
 - [x] *(prerequisite)* Action space and outcome schema. — ✅ `workflows/actions.py`, `storage/records.py`
-- [ ] Direct-answer baseline. — 📋
-- [ ] BM25 workflow. — 📋
+- [x] *(prerequisite)* Structured answer contract. — ✅ `generation/schema.py`; enforces answer-xor-abstention, detects hallucinated citations
+- [x] *(prerequisite)* BM25 retriever. — ✅ `retrieval/bm25.py` + number-aware tokenizer
+- [ ] Direct-answer baseline. — 📋 needs the Azure generation client
+- [ ] BM25 workflow. — 🟡 retrieval done; needs the generation client to close the loop
 - [ ] Dense workflow. — 📋
 - [ ] Hybrid workflow. — 📋 fusion method declared (RRF, k=60)
 - [ ] Reranked workflow. — 📋 reranker choice open (decision 6)
