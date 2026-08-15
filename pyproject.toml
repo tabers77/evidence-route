@@ -1,0 +1,198 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "evidence-route"
+version = "0.1.0"
+description = "Statistical evaluation and contextual-bandit routing for reliable enterprise question answering"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Carlos Esteban De La Cruz Ribadeneira" }]
+keywords = [
+    "information-retrieval",
+    "contextual-bandits",
+    "offline-policy-evaluation",
+    "llm-evaluation",
+    "rag",
+    "reliable-ai",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core dependencies stay deliberately small. Retrieval, generation and analysis
+# stacks are optional extras so the schema/reward/OPE core installs and tests
+# without heavyweight ML wheels (see spec section 17).
+dependencies = [
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.2",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "pyarrow>=15.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Extras are grouped by INSTALL WEIGHT as well as by function, because torch is
+# roughly ten times the size of everything else in this project combined.
+# Isolating it behind `local-models` keeps a complete Azure-backed experiment
+# environment at a few hundred MB, and makes the local-model path an explicit,
+# reversible choice rather than an accident of `pip install`.
+
+# Lexical + dense retrieval infrastructure (actions A1-A3). No torch: faiss is
+# an index, not a model, and embeddings can come from an Azure deployment.
+retrieval = [
+    "rank-bm25>=0.2.2",
+    "faiss-cpu>=1.8",
+]
+# Generation, embeddings, reranking and agentic actions via Azure OpenAI.
+generation = [
+    "openai>=1.40",
+    "azure-identity>=1.17",
+    "tenacity>=8.2",
+]
+# Document parsing for the FinanceBench PDF corpus.
+documents = [
+    "pypdf>=4.2",
+    "pdfplumber>=0.11",
+]
+# Routing models, calibration, statistics and figures. No torch.
+analysis = [
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+]
+# HEAVY (~3-4 GB): pulls torch and transformers.
+#
+# Needed only for the LOCAL-MODEL path: sentence-transformers embeddings for A2
+# and a cross-encoder reranker for A4. The Azure path covers both without torch.
+#
+# Keep this in the container's `full` target rather than the local venv unless
+# there is a reason to run local models on the host. Which path becomes primary
+# for A4 is still an open protocol decision (protocol_v1.md, decision 6) — the
+# spec permits either a cross-encoder or an LLM reranker, and that choice should
+# be made on measured evidence, not on install size.
+local-models = [
+    "sentence-transformers>=3.0",
+    "torch>=2.2",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-PyYAML",
+]
+# Full Azure-backed experiment environment. Deliberately excludes local-models:
+# `all` should not silently install several GB of torch.
+all = [
+    "evidence-route[retrieval,generation,documents,analysis]",
+]
+# Everything, including the local-model fallback path.
+all-local = [
+    "evidence-route[all,local-models]",
+]
+
+# NOTE ON EVALLAB (spec section 2.3)
+# ----------------------------------
+# Evallab (distribution name `agent-eval`) is intentionally NOT listed above.
+# During development it is installed as a local editable dependency:
+#
+#     pip install -e ../evallab
+#
+# Once Evallab has a stable tagged release, pin it here instead, e.g.:
+#
+#     dependencies = ["agent-eval>=0.1,<0.2"]
+#
+# and drop the editable install from the Makefile. Pinning a git commit is
+# preferable to tracking a moving branch in final reproducibility instructions.
+
+[project.scripts]
+evidence-route = "evidence_route.cli:app"
+
+[project.urls]
+Repository = "https://github.com/tabers77/evidence-route"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evidence_route"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = [
+    # Default CI runs deterministic tests only. Paid or non-deterministic
+    # model calls are opt-in (spec section 24, "LLM-dependent tests").
+    "llm: requires a live model provider; excluded from default CI",
+    "slow: long-running experiment or index-building test",
+    "integration: crosses module boundaries, may need fixtures on disk",
+    "smoke: minimal end-to-end path that must run without paid API access",
+]
+
+[tool.coverage.run]
+source = ["src/evidence_route"]
+branch = true
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+    "RUF",
+]
+ignore = [
+    "E501",  # line length is handled by the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802"]
+# B008 flags function calls in argument defaults. That is exactly how Typer
+# declares options, so the rule is a false positive for the CLI module rather
+# than a smell worth working around.
+"src/evidence_route/cli.py" = ["B008"]
+# Scripts import the local _common helper before the package is on sys.path,
+# so the import cannot be placed at the top in the usual order.
+"scripts/**" = ["E402"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.10"
+packages = ["evidence_route"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
