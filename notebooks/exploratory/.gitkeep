@@ -1,0 +1,6 @@
+# Exploratory notebooks only.
+#
+# Notebooks are for visual investigation, never the canonical pipeline. Anything
+# that produces a reported number lives under src/ and is reachable from the CLI
+# (spec section 18, repository-structure principles). A result that can only be
+# reproduced by re-running a notebook by hand is not reproducible.

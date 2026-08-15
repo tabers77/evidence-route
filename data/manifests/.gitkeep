@@ -1,0 +1,3 @@
+# Dataset manifests are written here by `evidence-route data prepare`.
+# Manifests ARE tracked in git — they record source URLs, licenses, checksums,
+# download timestamps and split seeds. The documents they describe are not.

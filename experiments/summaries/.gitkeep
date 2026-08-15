@@ -1,0 +1,5 @@
+# Curated experiment summaries. Tracked in git.
+#
+# One short markdown file per completed run: what was run, what came out, what
+# was surprising, and what it changes. Includes runs that produced null results
+# — those are kept, not quietly deleted.

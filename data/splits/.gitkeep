@@ -1,0 +1,3 @@
+# Frozen split definitions are written here as lists of example identifiers.
+# These ARE tracked in git: a split that is not version-controlled cannot be
+# shown to have been frozen before the final test was run.

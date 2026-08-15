@@ -1,0 +1,5 @@
+# Generated result tables: workflow comparison, routing-policy comparison,
+# OPE estimator accuracy, statistical comparison appendix.
+#
+# Every table carries the experiment id and commit SHA that produced it, so any
+# number in the report traces back to a run manifest.

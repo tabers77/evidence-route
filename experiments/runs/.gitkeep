@@ -1,0 +1,4 @@
+# Run outputs land here: outcome matrices, evaluations, traces and manifests.
+#
+# Contents are gitignored — they are large and reproducible from the config plus
+# the manifest. Curated summaries belong in ../summaries/ and are tracked.
