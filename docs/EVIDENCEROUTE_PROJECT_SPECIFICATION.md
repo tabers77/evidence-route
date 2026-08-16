@@ -100,7 +100,7 @@ design constraints exist, the logic does not. No stub returns fake data.
 | 1 | Research protocol and repository foundation | 🟡 in progress — ADR outstanding |
 | 2 | Dataset and document pipeline | 🟡 near complete — needs the real corpus downloaded and splits frozen |
 | 3 | No-retrieval and BM25 baselines | ✅ vertical slice runs end to end: question → BM25 → structured answer → Evallab episode → scores → reward |
-| 4 | Dense and hybrid retrieval | ⬜ |
+| 4 | Dense and hybrid retrieval | 🟡 A2/A3 and the paired comparison built; awaits a real embedding model to produce a valid comparison |
 | 5 | Reranking and agentic workflow | ⬜ |
 | 6 | Reliability, calibration and abstention | ⬜ |
 | 7 | Full-information outcome matrix | ⬜ |
@@ -1882,8 +1882,8 @@ documented package is 📋, not ✅.
 - [x] *(prerequisite)* BM25 retriever. — ✅ `retrieval/bm25.py` + number-aware tokenizer
 - [x] Direct-answer baseline. — ✅ `workflows/direct.py`; A0 with no retrieval
 - [x] BM25 workflow. — ✅ `workflows/bm25_workflow.py`; retrieval → grounded prompt → structured answer → outcome record
-- [ ] Dense workflow. — 📋
-- [ ] Hybrid workflow. — 📋 fusion method declared (RRF, k=60)
+- [x] Dense workflow. — ✅ `workflows/dense_workflow.py`; embedding model version recorded per index
+- [x] Hybrid workflow. — ✅ reciprocal rank fusion, component ranks preserved for attribution
 - [ ] Reranked workflow. — 📋 reranker choice open (decision 6)
 - [ ] Agentic workflow. — 📋 limits and tool allowlist declared
 - [ ] Abstention workflow. — 🟡 reason codes implemented and enforced by schema; thresholds unfitted

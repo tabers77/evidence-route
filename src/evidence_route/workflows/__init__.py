@@ -25,6 +25,7 @@ from evidence_route.workflows.actions import (
 )
 from evidence_route.workflows.base import GenerativeWorkflow, Workflow, WorkflowContext
 from evidence_route.workflows.bm25_workflow import BM25Workflow
+from evidence_route.workflows.dense_workflow import DenseWorkflow, HybridWorkflow
 from evidence_route.workflows.direct import DirectAnswerWorkflow
 
 __all__ = [
@@ -32,8 +33,10 @@ __all__ = [
     "AbstentionReason",
     "Action",
     "BM25Workflow",
+    "DenseWorkflow",
     "DirectAnswerWorkflow",
     "GenerativeWorkflow",
+    "HybridWorkflow",
     "Workflow",
     "WorkflowContext",
     "action_from_index",
