@@ -93,9 +93,39 @@ def test_abstain_with_reason_is_valid():
     assert outcome.abstention_reason is AbstentionReason.INSUFFICIENT_EVIDENCE
 
 
-def test_reason_code_rejected_on_answering_action():
-    with pytest.raises(ValidationError, match="only valid for ABSTAIN"):
-        _outcome(abstention_reason=AbstentionReason.AMBIGUOUS_QUESTION)
+def test_a_grounded_workflow_may_abstain():
+    """Restricting abstention to A6 would mean the only way to record "the
+    evidence was not there" is to fabricate an answer — the exact failure the
+    project studies. A1 declining is a valid, and desirable, outcome."""
+    outcome = _outcome(
+        action_id=Action.BM25,
+        answer=None,
+        abstention_reason=AbstentionReason.INSUFFICIENT_EVIDENCE,
+    )
+    assert outcome.abstained
+    assert outcome.answer is None
+
+
+def test_cannot_both_answer_and_abstain():
+    """Recording both would let one run be scored as answering and as
+    declining on the same question."""
+    with pytest.raises(ValidationError, match="cannot both answer and abstain"):
+        _outcome(
+            action_id=Action.BM25,
+            answer="here it is anyway",
+            abstention_reason=AbstentionReason.INSUFFICIENT_EVIDENCE,
+        )
+
+
+def test_answering_outcome_is_not_marked_abstained():
+    assert not _outcome().abstained
+
+
+def test_confidence_is_captured_for_calibration():
+    """It cannot be recovered later if it is not stored at generation time."""
+    assert _outcome(confidence=0.8).confidence == 0.8
+    with pytest.raises(ValidationError):
+        _outcome(confidence=1.5)
 
 
 def test_failed_outcome_is_retained_but_not_successful():

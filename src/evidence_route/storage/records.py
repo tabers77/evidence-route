@@ -190,9 +190,18 @@ class WorkflowOutcomeRecord(_Record):
     answer: str | None = None
     citations: list[Citation] = Field(default_factory=list)
 
-    #: Required when ``action_id`` is ABSTAIN, forbidden otherwise. An
-    #: abstention without a reason code is not auditable.
+    #: Required when ``action_id`` is ABSTAIN, and permitted on any other
+    #: action too. A grounded workflow that finds no supporting evidence should
+    #: decline rather than guess — that is the reliability behaviour selective
+    #: prediction measures (spec section 11.4). Restricting abstention to A6
+    #: would mean the only way to record "the evidence was not there" is to
+    #: fabricate an answer, which is precisely the failure being studied.
     abstention_reason: AbstentionReason | None = None
+
+    #: The model's self-reported confidence, before any scoring. Stored because
+    #: calibration analysis (spec section 14.6) tests whether it means anything;
+    #: it cannot be recovered later if it is not captured at generation time.
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
     #: Path to the full trace (tool calls, prompts, raw provider responses).
     #: Kept out of the record itself so the outcome table stays queryable.
@@ -209,6 +218,11 @@ class WorkflowOutcomeRecord(_Record):
     code_commit: str | None = None
     created_at: datetime = Field(default_factory=_utc_now)
 
+    #: Free-form observations about this run: hallucinated citation ids, whether
+    #: pricing was known, truncation flags. Anything a later analysis needs that
+    #: is not a first-class column.
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
     @model_validator(mode="after")
     def _check_abstention_consistency(self) -> WorkflowOutcomeRecord:
         if self.action_id is Action.ABSTAIN and self.abstention_reason is None:
@@ -216,9 +230,17 @@ class WorkflowOutcomeRecord(_Record):
                 "action_id=ABSTAIN requires an abstention_reason; an abstention "
                 "without a machine-readable reason code cannot be audited."
             )
-        if self.action_id is not Action.ABSTAIN and self.abstention_reason is not None:
-            raise ValueError(f"abstention_reason is only valid for ABSTAIN, got {self.action_id}.")
+        if self.abstention_reason is not None and self.answer:
+            raise ValueError(
+                "An outcome cannot both answer and abstain. Recording both would "
+                "let one run be scored as answering and as declining on the same "
+                "question, corrupting coverage and risk-coverage analysis."
+            )
         return self
+
+    @property
+    def abstained(self) -> bool:
+        return self.abstention_reason is not None
 
     @property
     def succeeded(self) -> bool:
