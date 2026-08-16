@@ -127,6 +127,36 @@ def env_check() -> None:
         typer.secho(f"  azure openai : not configured (missing: {missing})", fg=typer.colors.YELLOW)
         typer.echo("                 copy .env.example to .env and fill it in")
 
+    # The generation extra is optional; report it rather than let a run
+    # discover it missing partway through an expensive outcome matrix.
+    try:
+        import openai  # noqa: F401
+
+        typer.secho("  openai sdk   : available", fg=typer.colors.GREEN)
+    except ImportError:
+        typer.secho(
+            '  openai sdk   : NOT INSTALLED — pip install -e ".[generation]"',
+            fg=typer.colors.YELLOW,
+        )
+
+    if settings.sec_user_agent:
+        typer.secho("  sec edgar    : configured", fg=typer.colors.GREEN)
+    else:
+        typer.secho(
+            "  sec edgar    : EVIDENCE_ROUTE_SEC_USER_AGENT unset (needed to fetch filings)",
+            fg=typer.colors.YELLOW,
+        )
+
+    from evidence_route.generation.cost import PRICING
+
+    if PRICING:
+        typer.echo(f"  pricing      : {len(PRICING)} model(s) registered")
+    else:
+        typer.secho(
+            "  pricing      : none registered — cost will be recorded as unknown, not zero",
+            fg=typer.colors.YELLOW,
+        )
+
     env_file = PROJECT_ROOT / ".env"
     typer.echo(f"  .env present : {env_file.exists()}")
 

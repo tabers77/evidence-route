@@ -50,7 +50,9 @@ evidence-route env check         # environment, credentials, Evallab availabilit
 evidence-route actions list      # the routing action space
 evidence-route profiles          # declared reward profiles and weights
 evidence-route data prepare      # load, validate, split and freeze a dataset
-pytest -m "not llm and not slow" # 253 tests, offline, no API key required
+evidence-route corpus build-dev  # evidence-page development corpus
+evidence-route corpus fetch      # SEC filings from EDGAR
+pytest -m "not llm and not slow" # 359 tests, offline, no API key required
 ```
 
 ### Implemented modules
@@ -74,6 +76,15 @@ pytest -m "not llm and not slow" # 253 tests, offline, no API key required
 | `retrieval/tokenization.py` | ✅ | Number-aware tokenizer; keeps `66,608` whole and matches `66608` |
 | `retrieval/bm25.py` | ✅ | Okapi BM25, non-negative IDF, deterministic tie-breaking |
 | `generation/schema.py` | ✅ | Structured answer contract; citations, confidence, abstention |
+| `generation/prompts.py` | ✅ | Versioned templates (direct_v1, grounded_v1); version rides on every request |
+| `generation/client.py` | ✅ | Provider protocol, Azure OpenAI (key + Entra ID), recorded/scripted replay |
+| `generation/cache.py` | ✅ | Content-addressed response cache; a partial rerun is not re-billed |
+| `generation/cost.py` | ✅ | Token pricing; unknown cost stays distinct from zero |
+| `documents/corpus.py` | ✅ | Corpus provenance; blocks dev-only corpora from reported results |
+| `documents/evidence_corpus.py` | ✅ | Evidence-page dev corpus built from embedded page text |
+| `datasets/download.py` | ✅ | Atomic, idempotent dataset download with checksum enforcement |
+| `datasets/edgar.py` | ✅ | Rate-limited EDGAR client; resolves 78/84 documents |
+| `datasets/fetch_corpus.py` | ✅ | Corpus acquisition with per-document failure and coverage reporting |
 | `cli.py` | 🟡 | Full command surface; four commands live, the rest report their week |
 
 Every other subpackage under `src/evidence_route/` is 📋 — the directory and its
