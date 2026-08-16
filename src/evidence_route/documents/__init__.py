@@ -20,10 +20,15 @@ from evidence_route.documents.chunking import (
     chunk_id_for,
     make_chunk_id,
 )
+from evidence_route.documents.corpus import Corpus, CorpusProvenance, require_reportable
 from evidence_route.documents.evidence import (
     EvidenceResolution,
     parse_evidence_reference,
     resolve_evidence,
+)
+from evidence_route.documents.evidence_corpus import (
+    build_evidence_page_corpus,
+    parsed_documents_from_evidence,
 )
 from evidence_route.documents.models import (
     Chunk,
@@ -44,11 +49,14 @@ __all__ = [
     "PAGE_DELIMITER",
     "Chunk",
     "ChunkingConfig",
+    "Corpus",
+    "CorpusProvenance",
     "EvidenceResolution",
     "ParsedDocument",
     "ParsedPage",
     "ParsingReport",
     "Table",
+    "build_evidence_page_corpus",
     "chunk_document",
     "chunk_id_for",
     "estimate_tokens",
@@ -56,6 +64,8 @@ __all__ = [
     "parse_evidence_reference",
     "parse_pdf_document",
     "parse_text_document",
+    "parsed_documents_from_evidence",
+    "require_reportable",
     "resolve_evidence",
     "validate_parsed_document",
 ]
