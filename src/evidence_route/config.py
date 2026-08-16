@@ -161,6 +161,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- SEC EDGAR ----------------------------------------------------------
+    #: EDGAR requires a User-Agent identifying the requester and including
+    #: contact information, and returns 403 without one. It holds a real email
+    #: address, so it comes from the environment rather than the repository.
+    #: See https://www.sec.gov/os/webmaster-faq#developers
+    sec_user_agent: str | None = Field(
+        default=None,
+        description="e.g. 'EvidenceRoute research you@example.com'. Required to fetch filings.",
+    )
+
     # --- Execution mode -----------------------------------------------------
     offline: bool = Field(
         default=False,

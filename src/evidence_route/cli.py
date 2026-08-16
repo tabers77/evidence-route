@@ -47,6 +47,7 @@ ope_app = typer.Typer(help="Compare offline policy estimators.", no_args_is_help
 report_app = typer.Typer(help="Build tables, figures and the static report.", no_args_is_help=True)
 env_app = typer.Typer(help="Inspect the local environment.", no_args_is_help=True)
 actions_app = typer.Typer(help="Inspect the routing action space.", no_args_is_help=True)
+corpus_app = typer.Typer(help="Build and fetch document corpora.", no_args_is_help=True)
 
 for sub, name in (
     (data_app, "data"),
@@ -59,6 +60,7 @@ for sub, name in (
     (report_app, "report"),
     (env_app, "env"),
     (actions_app, "actions"),
+    (corpus_app, "corpus"),
 ):
     app.add_typer(sub, name=name)
 
@@ -158,6 +160,105 @@ def profiles() -> None:
             f"hallucination={profile.lambda_hallucination} violation={profile.lambda_violation}"
         )
         typer.echo("")
+
+
+@corpus_app.command("build-dev")
+def corpus_build_dev(
+    source: Path = typer.Option(
+        Path("data/raw/financebench/financebench_merged.jsonl"),
+        "--source",
+        help="FinanceBench metadata file.",
+    ),
+    chunk_size: int = typer.Option(512, "--chunk-size", help="Chunk size in tokens."),
+    overlap: int = typer.Option(64, "--overlap", help="Chunk overlap in tokens."),
+) -> None:
+    """Build the evidence-page development corpus.
+
+    DEVELOPMENT ONLY. Contains gold evidence pages pooled across questions, so
+    retrieval is easier than reality and disproportionately so for BM25. The
+    reporting path refuses corpora built this way.
+    """
+    from evidence_route.documents.chunking import ChunkingConfig
+    from evidence_route.documents.evidence_corpus import build_evidence_page_corpus
+
+    try:
+        corpus = build_evidence_page_corpus(
+            source,
+            chunking=ChunkingConfig(chunk_size_tokens=chunk_size, chunk_overlap_tokens=overlap),
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    stats = corpus.stats()
+    typer.secho(f"Built {stats['name']}", bold=True)
+    typer.echo(f"  documents   : {stats['n_documents']}")
+    typer.echo(f"  chunks      : {stats['n_chunks']}")
+    typer.echo(f"  tokens      : ~{stats['total_tokens']:,}")
+    typer.echo(f"  provenance  : {stats['provenance']}")
+    typer.secho(
+        f"\n  NOT REPORTABLE. {corpus.provenance.rationale}",
+        fg=typer.colors.YELLOW,
+    )
+
+
+@corpus_app.command("fetch")
+def corpus_fetch(
+    source: Path = typer.Option(
+        Path("data/raw/financebench/financebench_merged.jsonl"),
+        "--source",
+        help="FinanceBench metadata file.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("data/raw/financebench/filings"), "--output-dir", help="Where filings are written."
+    ),
+    cik_map: Path = typer.Option(
+        Path("data/reference/company_cik.json"),
+        "--cik-map",
+        help="Reviewed company-to-CIK mapping.",
+    ),
+    limit: int | None = typer.Option(
+        None, "--limit", help="Fetch only the first N documents (use to sanity-check first)."
+    ),
+) -> None:
+    """Fetch the FinanceBench SEC filings from EDGAR.
+
+    Requires EVIDENCE_ROUTE_SEC_USER_AGENT — the SEC mandates a User-Agent with
+    contact information and returns 403 without one.
+    """
+    from evidence_route.config import get_settings
+    from evidence_route.datasets.fetch_corpus import fetch_financebench_corpus
+
+    settings = get_settings()
+    if settings.offline:
+        typer.secho("Offline mode is enabled; refusing to fetch.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    if not settings.sec_user_agent:
+        typer.secho(
+            "EVIDENCE_ROUTE_SEC_USER_AGENT is not set.\n"
+            "The SEC requires a User-Agent identifying you and including a contact "
+            "email, e.g. 'EvidenceRoute research you@example.com'.\n"
+            "Add it to .env — see https://www.sec.gov/os/webmaster-faq#developers",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        report = fetch_financebench_corpus(
+            source, output_dir, cik_map, user_agent=settings.sec_user_agent, limit=limit
+        )
+    except (FileNotFoundError, ValueError, OSError) as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(report.summary(), bold=True)
+    for failure in report.failed[:10]:
+        typer.secho(f"  MISSING {failure.document_name}: {failure.reason}", fg=typer.colors.YELLOW)
+    if len(report.failed) > 10:
+        typer.echo(f"  ... and {len(report.failed) - 10} more")
+
+    path = report.write(output_dir / "coverage.json")
+    typer.echo(f"\n  coverage report -> {path}")
 
 
 # ---------------------------------------------------------------------------
