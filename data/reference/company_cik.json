@@ -1,0 +1,194 @@
+{
+  "3M": {
+    "cik": 66740,
+    "edgar_name": "3M CO",
+    "source": "company_tickers.json",
+    "ticker": "MMM"
+  },
+  "AES Corporation": {
+    "cik": 874761,
+    "edgar_name": "AES CORP",
+    "source": "company_tickers.json",
+    "ticker": "AES"
+  },
+  "AMD": {
+    "cik": 2488,
+    "edgar_name": "ADVANCED MICRO DEVICES INC",
+    "source": "verified-override",
+    "ticker": "AMD"
+  },
+  "Activision Blizzard": {
+    "cik": 718877,
+    "edgar_name": "Activision Blizzard, Inc.",
+    "source": "verified-override",
+    "ticker": ""
+  },
+  "Adobe": {
+    "cik": 796343,
+    "edgar_name": "ADOBE INC.",
+    "source": "company_tickers.json",
+    "ticker": "ADBE"
+  },
+  "Amazon": {
+    "cik": 1018724,
+    "edgar_name": "AMAZON COM INC",
+    "source": "company_tickers.json",
+    "ticker": "AMZN"
+  },
+  "Amcor": {
+    "cik": 1748790,
+    "edgar_name": "Amcor plc",
+    "source": "company_tickers.json",
+    "ticker": "AMCR"
+  },
+  "American Express": {
+    "cik": 4962,
+    "edgar_name": "AMERICAN EXPRESS CO",
+    "source": "company_tickers.json",
+    "ticker": "AXP"
+  },
+  "American Water Works": {
+    "cik": 1410636,
+    "edgar_name": "American Water Works Company, Inc.",
+    "source": "company_tickers.json",
+    "ticker": "AWK"
+  },
+  "Best Buy": {
+    "cik": 764478,
+    "edgar_name": "BEST BUY CO INC",
+    "source": "company_tickers.json",
+    "ticker": "BBY"
+  },
+  "Block": {
+    "cik": 1512673,
+    "edgar_name": "Block, Inc.",
+    "source": "company_tickers.json",
+    "ticker": "XYZ"
+  },
+  "Boeing": {
+    "cik": 12927,
+    "edgar_name": "BOEING CO",
+    "source": "company_tickers.json",
+    "ticker": "BA"
+  },
+  "CVS Health": {
+    "cik": 64803,
+    "edgar_name": "CVS HEALTH Corp",
+    "source": "company_tickers.json",
+    "ticker": "CVS"
+  },
+  "Coca-Cola": {
+    "cik": 21344,
+    "edgar_name": "COCA COLA CO",
+    "source": "company_tickers.json",
+    "ticker": "KO"
+  },
+  "Corning": {
+    "cik": 24741,
+    "edgar_name": "CORNING INC /NY",
+    "source": "company_tickers.json",
+    "ticker": "GLW"
+  },
+  "Costco": {
+    "cik": 909832,
+    "edgar_name": "COSTCO WHOLESALE CORP /NEW",
+    "source": "company_tickers.json",
+    "ticker": "COST"
+  },
+  "Foot Locker": {
+    "cik": 850209,
+    "edgar_name": "FOOT LOCKER, INC.",
+    "source": "verified-override",
+    "ticker": ""
+  },
+  "General Mills": {
+    "cik": 40704,
+    "edgar_name": "GENERAL MILLS INC",
+    "source": "company_tickers.json",
+    "ticker": "GIS"
+  },
+  "JPMorgan": {
+    "cik": 19617,
+    "edgar_name": "JPMORGAN CHASE & CO",
+    "source": "company_tickers.json",
+    "ticker": "JPM"
+  },
+  "Johnson & Johnson": {
+    "cik": 200406,
+    "edgar_name": "JOHNSON & JOHNSON",
+    "source": "company_tickers.json",
+    "ticker": "JNJ"
+  },
+  "Kraft Heinz": {
+    "cik": 1637459,
+    "edgar_name": "Kraft Heinz Co",
+    "source": "company_tickers.json",
+    "ticker": "KHC"
+  },
+  "Lockheed Martin": {
+    "cik": 936468,
+    "edgar_name": "LOCKHEED MARTIN CORP",
+    "source": "company_tickers.json",
+    "ticker": "LMT"
+  },
+  "MGM Resorts": {
+    "cik": 789570,
+    "edgar_name": "MGM Resorts International",
+    "source": "company_tickers.json",
+    "ticker": "MGM"
+  },
+  "Microsoft": {
+    "cik": 789019,
+    "edgar_name": "MICROSOFT CORP",
+    "source": "company_tickers.json",
+    "ticker": "MSFT"
+  },
+  "Netflix": {
+    "cik": 1065280,
+    "edgar_name": "NETFLIX INC",
+    "source": "company_tickers.json",
+    "ticker": "NFLX"
+  },
+  "Nike": {
+    "cik": 320187,
+    "edgar_name": "NIKE, Inc.",
+    "source": "company_tickers.json",
+    "ticker": "NKE"
+  },
+  "Paypal": {
+    "cik": 1633917,
+    "edgar_name": "PayPal Holdings, Inc.",
+    "source": "company_tickers.json",
+    "ticker": "PYPL"
+  },
+  "PepsiCo": {
+    "cik": 77476,
+    "edgar_name": "PEPSICO INC",
+    "source": "company_tickers.json",
+    "ticker": "PEP"
+  },
+  "Pfizer": {
+    "cik": 78003,
+    "edgar_name": "PFIZER INC",
+    "source": "company_tickers.json",
+    "ticker": "PFE"
+  },
+  "Ulta Beauty": {
+    "cik": 1403568,
+    "edgar_name": "Ulta Beauty, Inc.",
+    "source": "company_tickers.json",
+    "ticker": "ULTA"
+  },
+  "Verizon": {
+    "cik": 732712,
+    "edgar_name": "VERIZON COMMUNICATIONS INC",
+    "source": "company_tickers.json",
+    "ticker": "VZ"
+  },
+  "Walmart": {
+    "cik": 104169,
+    "edgar_name": "Walmart Inc.",
+    "source": "company_tickers.json",
+    "ticker": "WMT"
+  }
+}
