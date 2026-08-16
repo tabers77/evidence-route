@@ -99,7 +99,7 @@ design constraints exist, the logic does not. No stub returns fake data.
 | --- | --- | --- |
 | 1 | Research protocol and repository foundation | 🟡 in progress — ADR outstanding |
 | 2 | Dataset and document pipeline | 🟡 near complete — needs the real corpus downloaded and splits frozen |
-| 3 | No-retrieval and BM25 baselines | 🟡 in progress — retrieval + answer schema done; generation client, workflows, Evallab adapter and scorers pending |
+| 3 | No-retrieval and BM25 baselines | ✅ vertical slice runs end to end: question → BM25 → structured answer → Evallab episode → scores → reward |
 | 4 | Dense and hybrid retrieval | ⬜ |
 | 5 | Reranking and agentic workflow | ⬜ |
 | 6 | Reliability, calibration and abstention | ⬜ |
@@ -1888,15 +1888,15 @@ documented package is 📋, not ✅.
 - [ ] Agentic workflow. — 📋 limits and tool allowlist declared
 - [ ] Abstention workflow. — 🟡 reason codes implemented and enforced by schema; thresholds unfitted
 
-### Epic E — Evallab integration 📋
+### Epic E — Evallab integration 🟡
 
 - [x] *(prerequisite)* Verify the Evallab boundary. — ✅ `tests/integration/test_evallab_boundary.py`
-- [ ] Define EvidenceRoute trace schema. — 📋
-- [ ] Build trace-to-episode adapter. — 📋
-- [ ] Implement domain-specific scorers. — 📋 seven scorers named in section 13.2
-- [ ] Define score normalization. — 🟡 reference scales declared in `configs/rewards/profiles.yaml`
-- [ ] Define reward adapters. — 🟡 reward composition implemented; ScoreVector adapter not written
-- [ ] Generate first HTML comparison report. — 📋
+- [x] Define EvidenceRoute trace schema. — ✅ steps + metadata in `evallab_adapters/episode.py`
+- [x] Build trace-to-episode adapter. — ✅ outcome → `Episode`, carrying ground truth so scorers need no side channel
+- [x] Implement domain-specific scorers. — ✅ all seven from section 13.2, satisfying Evallab's protocol structurally (no inheritance)
+- [x] Define score normalization. — ✅ cost/latency reference scales applied in the scorers
+- [x] Define reward adapters. — ✅ `reward_from_score_vector`; Evallab's grade deliberately kept out of the policy value
+- [ ] Generate first HTML comparison report. — 📋 Evallab's `format_html_report` is available; not yet wired
 
 ### Epic F — Routing 📋
 

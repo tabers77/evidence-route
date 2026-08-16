@@ -142,6 +142,26 @@ separable:
 | Minimum acceptable answer coverage | 0.80 |
 | Cost saving considered operationally meaningful | 20% |
 
+### Numeric tolerance
+
+`NumericalAnswerScorer` uses a **relative tolerance of 1%** by default.
+
+Declared here because it decides which answers count as correct, and because it
+is more generous than it first appears: on FinanceBench's larger figures 1%
+accepts ±666 on a reported 66,608. That is wide enough to admit a genuinely
+different figure while excluding only gross errors.
+
+The argument for keeping it: filings round, models restate figures in different
+units, and a tolerance tight enough to catch every near-miss also fails correct
+answers for formatting. The argument for tightening it to 0.1%: these are
+extraction questions with an exact answer printed in the document, so a 1%
+discrepancy is usually a wrong number rather than rounding.
+
+**Open — decide before the outcome matrix runs**, since changing it afterwards
+alters every correctness score. Whichever value is chosen, the human-reviewed
+sample (section 15) is what establishes whether this scorer's verdicts match a
+reader's.
+
 ## 11. Statistical protocol
 
 - **Unit of analysis:** the question. All workflows run on the same questions,
