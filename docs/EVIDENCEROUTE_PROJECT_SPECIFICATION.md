@@ -80,6 +80,9 @@ pytest -m "not llm and not slow" # 359 tests, offline, no API key required
 | `generation/client.py` | ✅ | Provider protocol, Azure OpenAI (key + Entra ID), recorded/scripted replay |
 | `generation/cache.py` | ✅ | Content-addressed response cache; a partial rerun is not re-billed |
 | `generation/cost.py` | ✅ | Token pricing; unknown cost stays distinct from zero |
+| `workflows/base.py` | ✅ | Shared execution; failures become outcomes, never exceptions |
+| `workflows/direct.py` | ✅ | A0 — no-retrieval baseline |
+| `workflows/bm25_workflow.py` | ✅ | A1 — lexical retrieval plus grounded generation |
 | `documents/corpus.py` | ✅ | Corpus provenance; blocks dev-only corpora from reported results |
 | `documents/evidence_corpus.py` | ✅ | Evidence-page dev corpus built from embedded page text |
 | `datasets/download.py` | ✅ | Atomic, idempotent dataset download with checksum enforcement |
@@ -1877,8 +1880,8 @@ documented package is 📋, not ✅.
 - [x] *(prerequisite)* Action space and outcome schema. — ✅ `workflows/actions.py`, `storage/records.py`
 - [x] *(prerequisite)* Structured answer contract. — ✅ `generation/schema.py`; enforces answer-xor-abstention, detects hallucinated citations
 - [x] *(prerequisite)* BM25 retriever. — ✅ `retrieval/bm25.py` + number-aware tokenizer
-- [ ] Direct-answer baseline. — 📋 needs the Azure generation client
-- [ ] BM25 workflow. — 🟡 retrieval done; needs the generation client to close the loop
+- [x] Direct-answer baseline. — ✅ `workflows/direct.py`; A0 with no retrieval
+- [x] BM25 workflow. — ✅ `workflows/bm25_workflow.py`; retrieval → grounded prompt → structured answer → outcome record
 - [ ] Dense workflow. — 📋
 - [ ] Hybrid workflow. — 📋 fusion method declared (RRF, k=60)
 - [ ] Reranked workflow. — 📋 reranker choice open (decision 6)
