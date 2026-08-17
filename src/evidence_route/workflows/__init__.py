@@ -9,10 +9,9 @@ Modules (spec section 6):
     ``base``            shared execution: timing, accounting, error handling
     ``direct``          A0 — no retrieval, parametric answer only (implemented)
     ``bm25_workflow``   A1 — lexical retrieval + generation (implemented)
-    ``dense``           A2 — embedding retrieval + generation (planned)
-    ``hybrid``          A3 — explicit rank fusion + generation (planned)
-    ``hybrid_rerank``   A4 — fusion + cross-encoder rerank + generation (planned)
-    ``agentic``         A5 — bounded multi-step agent loop (planned)
+    ``dense_workflow``  A2/A3 — embedding retrieval and rank fusion
+    ``rerank_workflow`` A4 — fusion + reranking + generation
+    ``agentic``         A5 — bounded multi-step agent loop
     ``abstain``         A6 — decline with a machine-readable reason code (planned)
 """
 
@@ -23,20 +22,24 @@ from evidence_route.workflows.actions import (
     action_from_index,
     action_index,
 )
+from evidence_route.workflows.agentic import AgenticWorkflow
 from evidence_route.workflows.base import GenerativeWorkflow, Workflow, WorkflowContext
 from evidence_route.workflows.bm25_workflow import BM25Workflow
 from evidence_route.workflows.dense_workflow import DenseWorkflow, HybridWorkflow
 from evidence_route.workflows.direct import DirectAnswerWorkflow
+from evidence_route.workflows.rerank_workflow import RerankWorkflow
 
 __all__ = [
     "ACTION_SPACE",
     "AbstentionReason",
     "Action",
+    "AgenticWorkflow",
     "BM25Workflow",
     "DenseWorkflow",
     "DirectAnswerWorkflow",
     "GenerativeWorkflow",
     "HybridWorkflow",
+    "RerankWorkflow",
     "Workflow",
     "WorkflowContext",
     "action_from_index",
