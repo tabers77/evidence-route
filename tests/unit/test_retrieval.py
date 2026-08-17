@@ -102,6 +102,23 @@ def test_empty_text_yields_no_tokens():
     assert tokenize("!!! ??? ...") == []
 
 
+def test_tokenizer_does_not_stem():
+    """A known limitation, pinned so it is a decision rather than a surprise.
+
+    "revenue" and "revenues" are different tokens, so a question asking about
+    revenue will not match a filing line reading "Total revenues" on that word
+    alone. Financial line items are frequently plural in filings and singular in
+    questions — revenues, expenses, liabilities, earnings — so this costs real
+    recall.
+
+    Not fixed silently, because adding stemming changes every BM25 score and
+    therefore every retrieval measurement already taken. Recorded in
+    protocol_v1.md as an open decision.
+    """
+    assert tokenize("revenue") != tokenize("revenues")
+    assert "revenue" not in tokenize("Total revenues 66,608")
+
+
 # ---------------------------------------------------------------------------
 # BM25 configuration
 # ---------------------------------------------------------------------------

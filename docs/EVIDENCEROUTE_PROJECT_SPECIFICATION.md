@@ -101,7 +101,7 @@ design constraints exist, the logic does not. No stub returns fake data.
 | 2 | Dataset and document pipeline | 🟡 near complete — needs the real corpus downloaded and splits frozen |
 | 3 | No-retrieval and BM25 baselines | ✅ vertical slice runs end to end: question → BM25 → structured answer → Evallab episode → scores → reward |
 | 4 | Dense and hybrid retrieval | 🟡 A2/A3 and the paired comparison built; awaits a real embedding model to produce a valid comparison |
-| 5 | Reranking and agentic workflow | ⬜ |
+| 5 | Reranking and agentic workflow | ✅ A0–A5 all produce the same outcome schema; agent bounded by four independent limits |
 | 6 | Reliability, calibration and abstention | ⬜ |
 | 7 | Full-information outcome matrix | ⬜ |
 | 8 | Routing baselines | ⬜ |
@@ -1884,8 +1884,8 @@ documented package is 📋, not ✅.
 - [x] BM25 workflow. — ✅ `workflows/bm25_workflow.py`; retrieval → grounded prompt → structured answer → outcome record
 - [x] Dense workflow. — ✅ `workflows/dense_workflow.py`; embedding model version recorded per index
 - [x] Hybrid workflow. — ✅ reciprocal rank fusion, component ranks preserved for attribution
-- [ ] Reranked workflow. — 📋 reranker choice open (decision 6)
-- [ ] Agentic workflow. — 📋 limits and tool allowlist declared
+- [x] Reranked workflow. — ✅ `workflows/rerank_workflow.py`; both decision-6 candidates implemented so the choice can be measured
+- [x] Agentic workflow. — ✅ `agents/`; four independent limits, allowlisted tools, arithmetic parsed not evaluated
 - [ ] Abstention workflow. — 🟡 reason codes implemented and enforced by schema; thresholds unfitted
 
 ### Epic E — Evallab integration 🟡

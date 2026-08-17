@@ -162,6 +162,28 @@ alters every correctness score. Whichever value is chosen, the human-reviewed
 sample (section 15) is what establishes whether this scorer's verdicts match a
 reader's.
 
+### Lexical stemming
+
+The BM25 tokenizer performs **no stemming**. "revenue" and "revenues" are
+distinct tokens.
+
+Found while testing the agent's search tool: a query for "revenue" returns
+nothing against a passage reading "Total revenues 66,608". Financial line items
+are routinely plural in filings and singular in questions — revenues, expenses,
+liabilities, earnings — so this costs real recall on exactly the extraction
+questions FinanceBench is built from.
+
+The fix that fits the existing design is the one already used for numbers: emit
+both the surface form and a light singular variant, so exact matching is
+preserved and the variant only adds recall. Conservative rules (`ies`→`y`,
+`ses`/`xes`/`ches`→ strip `es`, trailing `s` except `ss`/`us`/`is`) cover the
+financial vocabulary without a stemming dependency.
+
+**Not applied yet**, deliberately: changing tokenization changes every BM25
+score, and therefore every retrieval measurement already taken. It should land
+in one change, before the outcome matrix, with the retrieval comparison re-run
+afterwards.
+
 ## 11. Statistical protocol
 
 - **Unit of analysis:** the question. All workflows run on the same questions,
