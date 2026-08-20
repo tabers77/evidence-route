@@ -50,6 +50,7 @@ __all__ = [
 EDGAR_RATE_LIMIT_PER_SECOND = 10.0
 
 _SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
+_OLDER_SUBMISSIONS_URL = "https://data.sec.gov/submissions/{name}"
 _ARCHIVE_URL = "https://www.sec.gov/Archives/edgar/data/{cik}/{accession_nodash}/{document}"
 _TIMEOUT_SECONDS = 60
 
@@ -202,16 +203,34 @@ class EdgarClient:
             time.sleep(minimum_gap - elapsed)
         self._last_request_at = time.monotonic()
 
-    def _get(self, url: str) -> bytes:
-        self._throttle()
-        request = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
-        try:
-            with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
-                return response.read()
-        except urllib.error.HTTPError as exc:
-            raise OSError(f"HTTP {exc.code} fetching {url}: {exc.reason}") from exc
-        except urllib.error.URLError as exc:
-            raise OSError(f"Could not reach {url}: {exc.reason}") from exc
+    def _get(self, url: str, *, attempts: int = 3) -> bytes:
+        """Fetch a URL, retrying transient server errors.
+
+        EDGAR returns an occasional 503 under load. Retrying a handful of times
+        is the difference between a complete corpus and one with arbitrary
+        gaps — and an arbitrary gap is worse than a systematic one, because it
+        cannot be described in the coverage report.
+        """
+        last_error: Exception | None = None
+        for attempt in range(attempts):
+            self._throttle()
+            request = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
+            try:
+                with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
+                    return response.read()
+            except urllib.error.HTTPError as exc:
+                last_error = OSError(f"HTTP {exc.code} fetching {url}: {exc.reason}")
+                # 4xx means the document is genuinely not there; only retry 5xx.
+                if exc.code < 500 or attempt == attempts - 1:
+                    raise last_error from exc
+                time.sleep(1.0 * (2**attempt))
+            except urllib.error.URLError as exc:
+                last_error = OSError(f"Could not reach {url}: {exc.reason}")
+                if attempt == attempts - 1:
+                    raise last_error from exc
+                time.sleep(1.0 * (2**attempt))
+
+        raise last_error or OSError(f"Failed to fetch {url}")
 
     # -- API ----------------------------------------------------------------
     def submissions(self, cik: int) -> dict[str, Any]:
@@ -226,18 +245,10 @@ class EdgarClient:
             self._submissions_cache[cik] = json.loads(payload)
         return self._submissions_cache[cik]
 
-    def list_filings(self, cik: int, form: str) -> list[EdgarFiling]:
-        """Every filing of one form type, newest first.
-
-        Only ``filings.recent`` is read. It holds the most recent 1000 filings,
-        which covers FinanceBench's 2015-2023 range comfortably; older pages
-        exist under ``filings.files`` and would need paging for an earlier
-        corpus.
-        """
-        data = self.submissions(cik)
-        recent = data.get("filings", {}).get("recent", {})
-        forms = recent.get("form", [])
-
+    @staticmethod
+    def _filings_from_block(cik: int, block: dict[str, Any], form: str) -> list[EdgarFiling]:
+        """Read one submissions block (recent, or an older page) for one form."""
+        forms = block.get("form", [])
         filings: list[EdgarFiling] = []
         for i, filing_form in enumerate(forms):
             if filing_form != form:
@@ -245,14 +256,64 @@ class EdgarClient:
             filings.append(
                 EdgarFiling(
                     cik=cik,
-                    accession_number=recent["accessionNumber"][i],
+                    accession_number=block["accessionNumber"][i],
                     form=filing_form,
-                    filing_date=recent["filingDate"][i],
-                    report_date=recent.get("reportDate", [""] * len(forms))[i],
-                    primary_document=recent.get("primaryDocument", [""] * len(forms))[i],
+                    filing_date=block.get("filingDate", [""] * len(forms))[i],
+                    report_date=block.get("reportDate", [""] * len(forms))[i],
+                    primary_document=block.get("primaryDocument", [""] * len(forms))[i],
                 )
             )
         return filings
+
+    def list_filings(self, cik: int, form: str) -> list[EdgarFiling]:
+        """Filings of one form type from ``filings.recent``.
+
+        ``recent`` caps at roughly 1000 filings, which for a high-volume filer
+        is a short window — JPMorgan's covers under two years. Older filings
+        need :meth:`list_older_filings`.
+        """
+        data = self.submissions(cik)
+        return self._filings_from_block(cik, data.get("filings", {}).get("recent", {}), form)
+
+    def list_older_filings(self, cik: int, form: str, fiscal_year: int) -> list[EdgarFiling]:
+        """Filings from the paginated older submission files.
+
+        Only pages whose declared date range could contain the target year are
+        fetched. JPMorgan has 69 older pages; loading them all to find one 10-K
+        would waste most of the rate budget and several hundred MB of transfer
+        for a company the corpus needs three documents from.
+
+        The window runs from the start of the fiscal year to two years after,
+        because a filing's *filing* date trails its *report* date — a FY2022
+        10-K is filed in early 2023.
+        """
+        data = self.submissions(cik)
+        pages = data.get("filings", {}).get("files", []) or []
+
+        filings: list[EdgarFiling] = []
+        for page in pages:
+            name = page.get("name")
+            if not name:
+                continue
+            if not self._page_could_cover(page, fiscal_year):
+                continue
+            try:
+                payload = json.loads(self._get(_OLDER_SUBMISSIONS_URL.format(name=name)))
+            except (OSError, json.JSONDecodeError):
+                # A missing page narrows coverage; it does not invalidate the
+                # pages that did load, so the search continues.
+                continue
+            filings.extend(self._filings_from_block(cik, payload, form))
+        return filings
+
+    @staticmethod
+    def _page_could_cover(page: dict[str, Any], fiscal_year: int) -> bool:
+        """Whether a page's date range might hold filings for a fiscal year."""
+        starts = str(page.get("filingFrom") or "")[:4]
+        ends = str(page.get("filingTo") or "")[:4]
+        if not starts.isdigit() or not ends.isdigit():
+            return True  # undated page: cannot rule it out
+        return int(starts) <= fiscal_year + 2 and int(ends) >= fiscal_year
 
     def find_filing(
         self, cik: int, form: str, fiscal_year: int, quarter: str | None = None
@@ -264,8 +325,18 @@ class EdgarClient:
         the wrong year. Companies with non-calendar fiscal years are why the
         match also accepts the following calendar year — Nike's FY2021 ends in
         May 2021, but Walmart's FY2021 ends in January 2021.
+
+        Recent filings are searched first, and the paginated older pages only if
+        that finds nothing — so the common case costs one request and the rare
+        case still resolves.
         """
         candidates = [f for f in self.list_filings(cik, form) if f.report_year == fiscal_year]
+        if not candidates:
+            candidates = [
+                f
+                for f in self.list_older_filings(cik, form, fiscal_year)
+                if f.report_year == fiscal_year
+            ]
 
         if quarter and candidates:
             month_for_quarter = {

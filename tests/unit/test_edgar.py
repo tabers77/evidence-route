@@ -158,6 +158,93 @@ def test_missing_year_returns_none_rather_than_a_wrong_filing(client):
     assert client.find_filing(123, "10-K", 1999) is None
 
 
+def test_older_pages_are_searched_when_recent_misses(monkeypatch):
+    """`filings.recent` caps around 1000 filings.
+
+    For a high-volume filer that is a short window — JPMorgan's covers under two
+    years — so a corpus reaching back to 2015 must page through the older files
+    or it silently loses a third of its documents.
+    """
+    main = _submissions([("10-K", "new", "2025-12-31", "new.htm")])
+    main["filings"]["files"] = [
+        {"name": "CIK-old-001.json", "filingFrom": "2014-01-01", "filingTo": "2018-12-31"}
+    ]
+    older = _submissions([("10-K", "old", "2016-12-31", "old.htm")])["filings"]["recent"]
+
+    fetched: list[str] = []
+
+    def _get(self, url, attempts=3):
+        fetched.append(url)
+        payload = older if "old-001" in url else main
+        return json.dumps(payload if "old-001" not in url else older).encode()
+
+    monkeypatch.setattr(EdgarClient, "_get", _get)
+    monkeypatch.setattr(EdgarClient, "_throttle", lambda self: None)
+
+    client = EdgarClient(user_agent=UA)
+    filing = client.find_filing(123, "10-K", 2016)
+
+    assert filing is not None
+    assert filing.accession_number == "old"
+    assert any("old-001" in url for url in fetched)
+
+
+def test_older_pages_outside_the_target_range_are_skipped(monkeypatch):
+    """JPMorgan has 69 older pages. Loading them all to find one 10-K would
+    waste most of the rate budget for a company needing three documents."""
+    main = _submissions([("10-K", "new", "2025-12-31", "new.htm")])
+    main["filings"]["files"] = [
+        {"name": "far-past.json", "filingFrom": "1995-01-01", "filingTo": "1999-12-31"},
+        {"name": "in-range.json", "filingFrom": "2015-01-01", "filingTo": "2019-12-31"},
+    ]
+    fetched: list[str] = []
+
+    def _get(self, url, attempts=3):
+        fetched.append(url)
+        if "in-range" in url:
+            return json.dumps(
+                _submissions([("10-K", "hit", "2016-12-31", "d.htm")])["filings"]["recent"]
+            ).encode()
+        return json.dumps(main).encode()
+
+    monkeypatch.setattr(EdgarClient, "_get", _get)
+    monkeypatch.setattr(EdgarClient, "_throttle", lambda self: None)
+
+    EdgarClient(user_agent=UA).find_filing(123, "10-K", 2016)
+
+    assert any("in-range" in url for url in fetched)
+    assert not any("far-past" in url for url in fetched)
+
+
+def test_recent_hit_does_not_load_older_pages(monkeypatch):
+    """The common case must stay at one request."""
+    main = _submissions([("10-K", "new", "2025-12-31", "new.htm")])
+    main["filings"]["files"] = [
+        {"name": "old.json", "filingFrom": "2015-01-01", "filingTo": "2019-12-31"}
+    ]
+    fetched: list[str] = []
+
+    def _get(self, url, attempts=3):
+        fetched.append(url)
+        return json.dumps(main).encode()
+
+    monkeypatch.setattr(EdgarClient, "_get", _get)
+    monkeypatch.setattr(EdgarClient, "_throttle", lambda self: None)
+
+    EdgarClient(user_agent=UA).find_filing(123, "10-K", 2025)
+    assert not any("old.json" in url for url in fetched)
+
+
+def test_undated_older_page_is_not_ruled_out(monkeypatch):
+    assert EdgarClient._page_could_cover({"name": "x"}, 2016) is True
+    assert EdgarClient._page_could_cover(
+        {"filingFrom": "2015-01-01", "filingTo": "2019-12-31"}, 2016
+    )
+    assert not EdgarClient._page_could_cover(
+        {"filingFrom": "1995-01-01", "filingTo": "1999-12-31"}, 2016
+    )
+
+
 def test_form_type_is_respected(client):
     assert client.find_filing(123, "8-K", 2022) is not None
     assert len(client.list_filings(123, "10-K")) == 2
